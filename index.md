@@ -1,30 +1,15 @@
-## Welcome to GitHub Pages
+## 欢迎来到gravity的小博客。
 
-You can use the [editor on GitHub](https://github.com/yytgravity/yytgravity.github.io/edit/master/index.md) to maintain and preview the content for your website in Markdown files.
+第一次自己尝试搭建博客，看到这一页算是有些欣慰，毕竟耗时四个多小时的成果（还是自己太菜了）。
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+在这里总结一下学习CTF的小心得。
 
-### Markdown
+### 密码学
+密码学是ctf题的一种，需要能辨识出密码的类型（如MD5，RSA，rul编码，base64加密，html实体编码等等）。
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
 
-```markdown
-Syntax highlighted code block
 
-# Header 1
-## Header 2
-### Header 3
 
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
 
 For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
 
