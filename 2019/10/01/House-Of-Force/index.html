@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>House Of Force - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="原理：House Of Force 是一种堆利用方法，但是并不是说 House Of Force 必须得基于堆漏洞来进行利用。如果一个堆(heap based) 漏洞想要通过 House Of Fo,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">House Of Force</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">House Of Force</h1>
+        <div class="stuff">
+            <span>十月 01, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h4 id="原理："><a href="#原理：" class="headerlink" title="原理："></a>原理：</h4><p>House Of Force 是一种堆利用方法，但是并不是说 House Of Force 必须得基于堆漏洞来进行利用。如果一个堆(heap based) 漏洞想要通过 House Of Force 方法进行利用，需要以下条件：          </p>
+<ul>
+<li>能够以溢出等方式控制到 top chunk 的 size 域        </li>
+<li>能够自由地控制堆分配尺寸的大小            </li>
+</ul>
+<p>House of Force的利用主要与glibc 对top chunk的处理，通过前面的学习可以知道，就是在进行堆分配时，如果所有的堆块都无法满足用户请求，就会从top chunk中分割出相应的大小作为堆块的空间。          </p>
+<p>补充一下top chunk：<br>在第一次malloc时，heap会被分成两个部分，第一部分就是被分出去的堆；剩下的部分就叫做top chunk。</p>
+<p>若是top chunk分配堆块的size值是由用户控制的任意值，就可以使top chunk指向我们期望的任何位置，相当于任意地址写。<br>在glibc中会对用户请求的大小和top chunk现有的size进行验证。    </p>
+<pre><code class="cpp">// 获取当前的top chunk，并计算其对应的大小
+victim = av-&gt;top;
+size   = chunksize(victim);
+// 如果在分割之后，其大小仍然满足 chunk 的最小大小，那么就可以直接进行分割。
+if ((unsigned long) (size) &gt;= (unsigned long) (nb + MINSIZE)) 
+{
+    remainder_size = size - nb;
+    remainder      = chunk_at_offset(victim, nb);
+    av-&gt;top        = remainder;
+    set_head(victim, nb | PREV_INUSE |
+            (av != &amp;main_arena ? NON_MAIN_ARENA : 0));
+    set_head(remainder, remainder_size | PREV_INUSE);
+
+    check_malloced_chunk(av, victim, nb);
+    void *p = chunk2mem(victim);
+    alloc_perturb(p, bytes);
+    return p;
+}
+</code></pre>
+<p>简单实验：        </p>
+<pre><code class="cpp">int main()
+{
+    long *ptr,*ptr2;
+    ptr=malloc(0x10);
+    ptr=(long *)(((long)ptr)+24);
+    *ptr=-1;        // &lt;=== 这里把top chunk的size域改为0xffffffffffffffff
+    malloc(-4120);  // &lt;=== 减小top chunk指针
+    malloc(0x10);   // &lt;=== 分配块实现任意地址写
+}
+</code></pre>
+<p>这里有几点需要重点说一下：<br>1.虽然在检查时，用户申请的大小也被当做无符号整型对待，但是在后面推top chunk的时候是作为int对待的，因此如果劫持目标内存地址比top chunk低，我们申请负数大小的内存是可以劫持过去的。<br><strong>2.计算劫持偏移量的注意点</strong>          </p>
+<p>首先劫持目标地址应该做为用户区而不是堆块的头部（因为你要写啊！），第二点是top chunk推的时候应该推到劫持目标地址对应堆块的头部，这个长度不等于你所申请的长度，而等于你所申请的长度加上size_head。         </p>
+<p>基于以上两点，我们的计算过程应当是：首先确定劫持目标内存地址，然后将此处看作堆块用户区算出其头部地址，然后用这个头部地址减去top chunk head地址得到一个offset，然后实现劫持需要申请的用户区大小即为offset – size_head（若涉及到重用对齐什么的自己按这个原则分析即可）。      </p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-4"><a class="toc-link" href="#原理："><span class="toc-number">1.</span> <span class="toc-text">原理：</span></a></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

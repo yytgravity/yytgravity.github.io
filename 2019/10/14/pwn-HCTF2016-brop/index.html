@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>pwn HCTF2016 brop - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="BROP这里首先要介绍一种攻击方式–BROP（Blind Return Oriented Programming），最初的论文。      
+简介+攻击的前提：相信大家在之前都接触过ROP，BROP,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">pwn HCTF2016 brop</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">pwn HCTF2016 brop</h1>
+        <div class="stuff">
+            <span>十月 14, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h2 id="BROP"><a href="#BROP" class="headerlink" title="BROP"></a>BROP</h2><p>这里首先要介绍一种攻击方式–BROP（Blind Return Oriented Programming），<a href="http://www.scs.stanford.edu/brop/" target="_blank" rel="noopener">最初的论文</a>。      </p>
+<h5 id="简介-攻击的前提："><a href="#简介-攻击的前提：" class="headerlink" title="简介+攻击的前提："></a>简介+攻击的前提：</h5><p>相信大家在之前都接触过ROP，BROP的目的是通过rop的方式劫持程序的流程，而我们不需要知道该程序的任何源码或任何二进制代码（此攻击方法对开启了ASLR、PIE、NX以及stack cannaries等主流保护的程序同样适用，并且无论32位还是64位都同样适用）。       </p>
+<p><strong>前提：</strong>       </p>
+<ul>
+<li>1.首先需要程序存在栈溢出漏洞，并且可以被利用。      </li>
+<li>2.服务器进程在crash后会复活，且复活后的进程不会re-rand（即尽管存在ASLR保护的前提下，复活后的随机化不变），这个条件尽管看似苛刻，但是能够满足的情况还是很多的：当前像nginx, MySQL, Apache, OpenSSH, Samba等服务器应用都是符合这种特性的。           </li>
+</ul>
+<h6 id="攻击流程：-1-远程dump内存"><a href="#攻击流程：-1-远程dump内存" class="headerlink" title="攻击流程：  1.远程dump内存"></a>攻击流程：  1.远程dump内存</h6><p>由于我们并不知道远程程序的内存布局，所以我们当然要想一种办法远程dump出程序的内存布局到本地，这里采用的办法是<br>调用一个系统调用write，并传入一个socket文件描述符，如下所示：    </p>
+<pre><code class="cpp">write(int sock,void *buf,int len)
+</code></pre>
+<p>他的汇编形式如下：     </p>
+<pre><code class="cpp">pop %rdi     //rdi-&gt;sock
+pop %rsi     //rsi-&gt;buf
+pop %rdx     //rdx-&gt;len
+call write
+ret
+</code></pre>
+<p>当然熟悉rop攻击之后，我们很容易就能想到只要能够找道对应的gadget，之后在栈 构造好这几个gadget的内存地址，依次进行调用即可。<br>当然要寻找这些gadget对于还对程序内存分布一无所知的我们还很困难（尤其是在程序开启了ASLR和canaries的时候），所以接下来还要进行一些铺垫。      </p>
+<h6 id="应对stack-canaries："><a href="#应对stack-canaries：" class="headerlink" title="应对stack canaries："></a>应对stack canaries：</h6><p>这里使用的方法叫做stack reading：<br>我们想要构造的栈布局如下：      </p>
+<pre><code>buffer+canary+b+r
+</code></pre><ul>
+<li>1.首先尝试多次判断来确定buffer的长度，当cannary被破坏时，就可以得到buffer的长度。    </li>
+<li>接下来开始通过逐字节尝试来还原canary，没一个字节最多尝试26次，我们可以通过这个方式还原出canary。<br>当然后面的ebp和返回地址也可以同理得到。     </li>
+</ul>
+<h6 id="寻找stop-gadget"><a href="#寻找stop-gadget" class="headerlink" title="寻找stop gadget"></a>寻找stop gadget</h6><p>刚才我们已经找到了合适的canary来绕过stack canaries保护，接下来我们就想找到刚才提到的gadget。<br>在开找之前，首先要介绍一个特殊的gadget：stop gadget。一般，如果栈上的return address被覆盖成我们随便找的内存地址，程序有很大的可能性会出问题（例如：return address指向了一个代码区域，里面会有一些对空指针的访问造成程序crash，从而使得攻击者的连接（connection）被关闭），但是如果指向的那个代码段，在运行到那之后并不会crash，而是会进入无限循环，这时程序仅仅是hang在那里，可以一直保持连接状态。这类型的gadget就称为stop gadget，这种gadget对寻找其他的gadget起了至关重要的作用。       </p>
+<h6 id="寻找可利用的gadget"><a href="#寻找可利用的gadget" class="headerlink" title="寻找可利用的gadget"></a>寻找可利用的gadget</h6><p>现在我们有了stop gadget，</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#BROP"><span class="toc-number">1.</span> <span class="toc-text">BROP</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#简介-攻击的前提："><span class="toc-number">1.0.0.1.</span> <span class="toc-text">简介+攻击的前提：</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#攻击流程：-1-远程dump内存"><span class="toc-number">1.0.0.1.1.</span> <span class="toc-text">攻击流程：  1.远程dump内存</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#应对stack-canaries："><span class="toc-number">1.0.0.1.2.</span> <span class="toc-text">应对stack canaries：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#寻找stop-gadget"><span class="toc-number">1.0.0.1.3.</span> <span class="toc-text">寻找stop gadget</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#寻找可利用的gadget"><span class="toc-number">1.0.0.1.4.</span> <span class="toc-text">寻找可利用的gadget</span></a></li></ol></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

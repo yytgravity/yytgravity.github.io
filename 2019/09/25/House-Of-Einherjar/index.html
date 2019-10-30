@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>House Of Einherjar - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="House Of Einherjarhouse of einherjar 是一种堆利用技术，由 Hiroki Matsukuma 提出。该堆利用技术可以强制使得 malloc 返回一个几乎任意地址的,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">House Of Einherjar</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">House Of Einherjar</h1>
+        <div class="stuff">
+            <span>九月 25, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="House-Of-Einherjar"><a href="#House-Of-Einherjar" class="headerlink" title="House Of Einherjar"></a>House Of Einherjar</h1><p>house of einherjar 是一种堆利用技术，由 Hiroki Matsukuma 提出。该堆利用技术可以强制使得 malloc 返回一个几乎任意地址的 chunk 。其主要在于滥用 free 中的后向合并操作（合并低地址的chunk），从而使得尽可能避免碎片化。</p>
+<p>此外，需要注意的是，在一些特殊大小的堆块中，off by one 不仅可以修改下一个堆块的 prev_size，还可以修改下一个堆块的 PREV_INUSE 比特位。 </p>
+<h5 id="一、Glibc堆块的向前向后合并与unlink原理"><a href="#一、Glibc堆块的向前向后合并与unlink原理" class="headerlink" title="一、Glibc堆块的向前向后合并与unlink原理"></a>一、Glibc堆块的向前向后合并与unlink原理</h5><p>1.unlink<br>Unlink是把free掉的chunk从所属的bins链中，卸下来的操作（当然还包括一系列的检测机制），它是在free掉一块chunk(除fastbin大小的chunk外）之后，glibc检查这块chunk相邻的上下两块chunk的free状态之后，做出的向后合并或者向前合并引起的。   </p>
+<pre><code class="cpp">if (!prev_inuse(p)) {
+    prevsize = prev_size (p);
+    size += prevsize;
+    p = chunk_at_offset(p, -((long) prevsize));
+    unlink(av, p, bck, fwd);
+ }
+</code></pre>
+<p>向后合并：<br><img src="https://i.loli.net/2019/09/29/7G5Ky8I9Mfaeg4n.png" alt="backward_consolidate.png">    </p>
+<ul>
+<li>首先检查p指向chunk的size字段的pre_inuse位，是否为0（检查当前chunk的前一块chunk是否是free的，若为free则开始向前合并）     </li>
+<li>获取前一块chunk的size，相加得到新的已合并的size。      </li>
+<li>根据当前的presize来获得指向前一块chunk的指针。      </li>
+<li>将这个指针传入unlink    </li>
+</ul>
+<pre><code class="cpp">if (nextchunk != av-&gt;top) {
+    /* get and clear inuse bit */
+     nextinuse = inuse_bit_at_offset(nextchunk, nextsize);
+
+    /* consolidate forward */
+    if (!nextinuse) {
+       unlink(av, nextchunk, bck, fwd);
+        size += nextsize;
+        } else
+      clear_inuse_bit_at_offset(nextchunk, 0);
+</code></pre>
+<p>向前合并：       </p>
+<ul>
+<li>如果free掉的chunk相邻的下一块chunk(下面用nextchunk表示，并且nextsize表示它的大小)不是topchunk,并且是free的话就进入向前合并的流程。    </li>
+<li>如果nextchunk不是free的，则修改他的size字段的pre_inuse位。如果nextchunk是topchunk则和topchunk进行合并。    </li>
+<li>检测nextchunk是否free，是通过inuse_bit_at_offset(nextchunk, nextsize)来获得nextchunk的相邻下一块chunk的size字段的presize位实现的。<br>流程：     </li>
+<li>让nextchunk进入chunk流程。      </li>
+<li>size+nextsize计算出合并后的size    </li>
+</ul>
+<pre><code class="cpp"> if (nextchunk != av-&gt;top) {
+     /* get and clear inuse bit */
+     nextinuse = inuse_bit_at_offset(nextchunk, nextsize);
+
+     /* consolidate forward */
+     if (!nextinuse) {
+         unlink(av, nextchunk, bck, fwd);
+         size += nextsize;
+             } else
+    clear_inuse_bit_at_offset(nextchunk, 0);
+</code></pre>
+<p>如果free掉的chunk相邻的下一块chunk(下面用nextchunk表示，并且nextsize表示它的大小)不是topchunk,并且是free的话就进入向前合并的流程。<br>如果nextchunk不是free的，则修改他的size字段的pre_inuse位。<br>如果nextchunk是topchunk则和topchunk进行合并。<br>检测nextchunk是否free，是通过inuse_bit_at_offset(nextchunk, nextsize)来获得nextchunk的相邻下一块chunk的size字段的presize位实现的。<br><strong>合并流程:</strong><br>1、让nextchunk进入unlink流程<br>2、给size加上nextsize<br><strong>unlink</strong><br>unlink是个宏，但是在读代码的时候请把bk和fd当作变量。       </p>
+<p>ps:p是指向chunk的指针。      </p>
+<pre><code class="cpp">#define unlink(AV, P, BK, FD) {                                            
+            if (__builtin_expect (chunksize(P) != prev_size (next_chunk(P)), 0))      
+              malloc_printerr (&quot;corrupted size vs. prev_size&quot;);                              
+            FD = P-&gt;fd;                                                                      
+            BK = P-&gt;bk;                                                                      
+            if (__builtin_expect (FD-&gt;bk != P || BK-&gt;fd != P, 0))                      
+              malloc_printerr (&quot;corrupted double-linked list&quot;);                              
+            else {                                                                      
+                FD-&gt;bk = BK;                                                              
+                BK-&gt;fd = FD;                                                              
+                if (!in_smallbin_range (chunksize_nomask (P))                             
+                    &amp;&amp; __builtin_expect (P-&gt;fd_nextsize != NULL, 0)) {                      
+                    if (__builtin_expect (P-&gt;fd_nextsize-&gt;bk_nextsize != P, 0)              
+                        || __builtin_expect (P-&gt;bk_nextsize-&gt;fd_nextsize != P, 0))    
+                      malloc_printerr (&quot;corrupted double-linked list (not small)&quot;);   
+                    if (FD-&gt;fd_nextsize == NULL) {                                      
+                        if (P-&gt;fd_nextsize == P)                                      
+                          FD-&gt;fd_nextsize = FD-&gt;bk_nextsize = FD;                      
+                        else {                                                              
+                            FD-&gt;fd_nextsize = P-&gt;fd_nextsize;                              
+                            FD-&gt;bk_nextsize = P-&gt;bk_nextsize;                              
+                            P-&gt;fd_nextsize-&gt;bk_nextsize = FD;                              
+                            P-&gt;bk_nextsize-&gt;fd_nextsize = FD;                              
+                          }                                                              
+                      } else {                                                              
+                        P-&gt;fd_nextsize-&gt;bk_nextsize = P-&gt;bk_nextsize;                      
+                        P-&gt;bk_nextsize-&gt;fd_nextsize = P-&gt;fd_nextsize;                      
+                      }                                                                                   }                                                                      \
+              }                                                                              
+        }
+</code></pre>
+<p>检查当前chunk的size字段与它相邻的下一块chunk中记录的pre_size是否一样如果不一样，就出现corrupted size vs. prev_size的错误          </p>
+<p>检查是否满足p-&gt;fd-&gt;bk==p和p-&gt;bk-&gt;fd==p，否则出现corrupted double-linked list，错误。   </p>
+<p>解链操作：fd-&gt;bk=bk和bk-&gt;fd=fd          </p>
+<p>以上就是unlink的操作，本质上就是从glibc管理的bin链中解链以及解链前的安全检查（防止被利用）         </p>
+<h5 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h5><p>不管是向前合并还是向后合并，unlink后都会来到    </p>
+<pre><code class="cpp">bck = unsorted_chunks(av);
+              fwd = bck-&gt;fd;
+              if (__glibc_unlikely (fwd-&gt;bk != bck))
+                malloc_printerr (&quot;free(): corrupted unsorted chunks&quot;);
+              p-&gt;fd = fwd;
+              p-&gt;bk = bck;
+              if (!in_smallbin_range(size))
+                {
+                  p-&gt;fd_nextsize = NULL;
+                 p-&gt;bk_nextsize = NULL;
+               }
+             bck-&gt;fd = p;
+             fwd-&gt;bk = p;
+
+             set_head(p, size | PREV_INUSE);
+             set_foot(p, size);
+
+              check_free_chunk(av, p);
+            }
+</code></pre>
+<p>其实做的是，将合并好的chunk加入到unsorted bin中第一个。并且如果这个chunk是samll chunk大小的话它是没有fd_nextsize和bk_nextsize的。       </p>
+<p>然后就设置合并过后的chunk的头部（设置合并过后的size,已经合并形成的chunk的下一块chunk的pre_size字段）<br><strong>小实验</strong><br>这一部分请移步到我的另一篇博客：<a href="https://711lab.club/2019/09/03/Unlink/" target="_blank" rel="noopener">Unlink</a></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#House-Of-Einherjar"><span class="toc-number">1.</span> <span class="toc-text">House Of Einherjar</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#一、Glibc堆块的向前向后合并与unlink原理"><span class="toc-number">1.0.0.0.1.</span> <span class="toc-text">一、Glibc堆块的向前向后合并与unlink原理</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#利用"><span class="toc-number">1.0.0.0.2.</span> <span class="toc-text">利用</span></a></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

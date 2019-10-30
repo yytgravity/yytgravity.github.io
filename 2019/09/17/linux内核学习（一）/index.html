@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>linux内核学习（一） - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="基础知识1.x86下的Linux的内存分布
+liunx系统在装载elf格式的程序文件时，会调用loader把可执行文件的各个段依次载入到从莫依地质开始的空间中。以32位机器为例，.text段会最先被,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">linux内核学习（一）</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">linux内核学习（一）</h1>
+        <div class="stuff">
+            <span>九月 17, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="基础知识"><a href="#基础知识" class="headerlink" title="基础知识"></a>基础知识</h1><h2 id="1-x86下的Linux的内存分布"><a href="#1-x86下的Linux的内存分布" class="headerlink" title="1.x86下的Linux的内存分布"></a>1.x86下的Linux的内存分布</h2><ul>
+<li><p>liunx系统在装载elf格式的程序文件时，会调用loader把可执行文件的各个段依次载入到从莫依地质开始的空间中。以32位机器为例，.text段会最先被载入，其次是.data段，最后是.bss段。这可以看作是程序的开始空间。0xbfffffff，也就是到 3G 地址处，3G 以上的 1G 空间是内核使用的，应用程序不可以直解访问。   </p>
+<p>应用程序的堆栈从最高地址处开始向下生长，.bss 段与堆栈之间的空间是空闲的，空闲空间被分成两部分，一部分为 heap，一部分为 mmap 映射区域，mmap 映射区域一般从 TASK_SIZE/3 的地方开始，但在不同的 Linux 内核和机器上，mmap 区域的开始位置一般是不同的。Heap 和 mmap 区域都可以供用户自由使用，但是它在刚开始的时候并没有映射到内存空间内，是不可访问的。在向内核请求分配该空间之前，对这个空间的访问会导致segmentation fault。用户程序可以直接使用系统调用来管理 heap 和 mmap 映射区域，但更多的时候程序都是使用 C 语言提供的 malloc()和 free()函数来动态的分配和释放内存。Stack区域是唯一不需要映射，用户却可以访问的内存区域，这也是利用堆栈溢出进行攻击的基础。    </p>
+<p>32位模式下的经典布局：<br><img src="https://i.loli.net/2019/09/17/eLXS8avg5so4znt.jpg" alt="574AE0B6DC8F45F1A717C03EEB071B30.jpg">  </p>
+</li>
+<li>这种布局是 Linux 内核 2.6.7 以前的默认进程内存布局形式，mmap 区域与栈区域相对增长，这意味着堆只有 1GB 的虚拟地址空间可以使用，继续增长就会进入 mmap 映射区域，这显然不是我们想要的。这是由于 32 模式地址空间限制造成的，所以内核引入了另一种虚拟地址空间的布局形式，将在后面介绍。但对于 64 位系统，提供了巨大的虚拟地址空间，这种布局就相当好。   </li>
+</ul>
+<p>32 位模式下进程默认内存布局：   </p>
+<p><img src="https://i.loli.net/2019/09/17/bAazYZmoB21cJtr.jpg" alt="067EBBC77E7149AFA7628C79C647BBD4.jpg">    </p>
+<ul>
+<li>从上图可以看到，栈至顶向下扩展，并且栈是有界的。堆至底向上扩展，mmap 映射区域至顶向下扩展，mmap 映射区域和堆相对扩展，直至耗尽虚拟地址空间中的剩余区域，这种结构便于 C 运行时库使用 mmap 映射区域和堆进行内存分配。上图的布局形式是在内核2.6.7 以后才引入的，这是 32 位模式下进程的默认内存布局形式。   </li>
+</ul>
+<p>64 位模式下进程内存布局:     </p>
+<p>  在 64 位模式下各个区域的起始位置是什么呢？对于 AMD64 系统，内存布局采用经典内存布局，text 的起始地址为 0x0000000000400000，堆紧接着 BSS 段向上增长，mmap 映射区域开始位置一般设为 TASK_SIZE/3。    </p>
+<p>计算一下可知，mmap 的开始区域地址为 0x00002AAAAAAAA000，栈顶地址为<br>0x00007FFFFFFFF000    </p>
+<p><img src="https://i.loli.net/2019/09/17/dSBWgDoH6UpEqjI.jpg" alt="5D72A6CAED044D849B10E4B6F59E2796.jpg">   </p>
+<p>上图是 X86_64 下 Linux 进程的默认内存布局形式，这只是一个示意图，当前内核默认配置下，进程的栈和 mmap 映射区域并不是从一个固定地址开始，并且每次启动时的值都不一样，这是程序在启动时随机改变这些值的设置，使得使用缓冲区溢出进行攻击更加困难。   </p>
+<h5 id="Heap操作相关"><a href="#Heap操作相关" class="headerlink" title="Heap操作相关"></a>Heap操作相关</h5><p>与Heap有关的操作函数主要有两个，brk()为系统调用，sbrk()为c库函数。系统调用通常提供一种最小功能，而库函数通常提供比较复杂的功能。Glibc 的 malloc 函数族（realloc，calloc 等）就调用 sbrk()函数将数据段的下界移动，sbrk()函数在内核的管理下将虚拟地址空间映射到内存，供 malloc()函数使用。       </p>
+<ul>
+<li><p>malloc<br>从恰好大小合适的 large bin 中获取 chunk。<br>这里需要注意的是 fastbin 与 small bin 就没有使用 unlink，这就是为什么漏洞会经常出现在它们这里的原因。<br>依次遍历处理 unsorted bin 时也没有使用 unlink 的。<br>从比请求的 chunk 所在的 bin 大的 bin 中取 chunk。      </p>
+</li>
+<li><p>Free<br>后向合并，合并物理相邻低地址空闲 chunk。<br>前向合并，合并物理相邻高地址空闲 chunk（除了 top chunk）。     </p>
+</li>
+<li><p>malloc_consolidate<br>后向合并，合并物理相邻低地址空闲 chunk。<br>前向合并，合并物理相邻高地址空闲 chunk（除了 top chunk）。     </p>
+</li>
+<li><p>realloc<br>前向扩展，合并物理相邻高地址空闲 chunk（除了top chunk）。       </p>
+</li>
+</ul>
+<p>不开启 ASLR 保护时，start_brk 以及 brk 会指向 data/bss 段的结尾。      </p>
+<p>开启 ASLR 保护时，start_brk 以及 brk 也会指向同一位置，只是这个位置是在 data/bss 段结尾后的随机偏移处。   </p>
+<p><a href="https://blog.csdn.net/LF_2016/article/details/54346121" target="_blank" rel="noopener">小科普</a>  </p>
+<p>内核数据结构 mm_struct 中的成员变量 start_code 和 end_code 是进程代码段的起始和终止地址，start_data 和 end_data 是进程数据段的起始和终止地址，start_stack 是进程堆栈段起始地址，start_brk 是进程动态内存分配起始地址（堆的起始地址），还有一个 brk（堆的当前最后地址），就是动态内存分配当前的终止地址。C 语言的动态内存分配基本函数是malloc()，在 Linux 上的实现是通过内核的 brk 系统调用。brk()是一个非常简单的系统调用，只是简单地改变 mm_struct 结构的成员变量 brk 的值。   </p>
+<p>这两个函数的定义如下：      </p>
+<pre><code class="cpp">#include &lt;unistd.h&gt;
+int brk(void *addr);
+void *sbrk(intptr_t increment);
+</code></pre>
+<p>需要说明的是，但 sbrk()的参数 increment 为 0 时，sbrk()返回的是进程的当前 brk 值，increment 为正数时扩展 brk 值，当 increment 为负值时收缩 brk 值。    </p>
+<h5 id="Mmap-映射区域操作相关函数"><a href="#Mmap-映射区域操作相关函数" class="headerlink" title="Mmap 映射区域操作相关函数"></a>Mmap 映射区域操作相关函数</h5><p>mmap()函数将一个文件或者其它对象映射进内存。文件被映射到多个页上，如果文件的大小不是所有页的大小之和，最后一个页不被使用的空间将会清零。munmap 执行相反的操作，删除特定地址区域的对象映射。函数的定义如下： </p>
+<pre><code class="cpp">#include &lt;sys/mman.h&gt;
+void *mmp(void *addr, size_t length, int prot, int flags, int fd, off_t offest);
+int munmao (void *addr, size_t length); 
+</code></pre>
+<p>在这里不准备对这两个函数做详细介绍，只是对 ptmalloc 中用到的功能做一下介绍，其他的用法请参看相关资料。   </p>
+<p>参数：<br> start：映射区的开始地址。<br> length：映射区的长度。<br> prot：期望的内存保护标志，不能与文件的打开模式冲突。是以下的某个值，可以通过or 运算合理地组合在一起。Ptmalloc 中主要使用了如下的几个标志：<br> PROT_EXEC //页内容可以被执行，ptmalloc 中没有使用<br> PROT_READ //页内容可以被读取，ptmalloc 直接用 mmap 分配内存并立即返回给用户时设置该标志<br> PROT_WRITE //页可以被写入，ptmalloc 直接用 mmap 分配内存并立即返回给用户时设置该标志<br> PROT_NONE //页不可访问，ptmalloc 用 mmap 向系统“批发”一块内存进行管理时设置该标志    </p>
+<p> flags：指定映射对象的类型，映射选项和映射页是否可以共享。它的值可以是一个或者多个以下位的组合体<br> MAP_FIXED //使用指定的映射起始地址，如果由 start 和 len 参数指定的内存区重叠于现存的映射空间，重叠部分将会被丢弃。如果指定的起始地址不可用，操作将会失败。并且起始地址必须落在页的边界上。Ptmalloc 在回收从系统中“批发”的内存时设置该标志。<br> MAP_PRIVATE //建立一个写入时拷贝的私有映射。内存区域的写入不会影响到原文件。这个标志和以上标志是互斥的，只能使用其中一个。Ptmalloc每次调用mmap都设置该标志。<br> MAP_NORESERVE //不要为这个映射保留交换空间。当交换空间被保留，对映射区修改的可能会得到保证。当交换空间不被保留，同时内存不足，对映射区的修改会引起段违例信号。Ptmalloc 向系统“批发”内存块时设置该标志。<br> MAP_ANONYMOUS //匿名映射，映射区不与任何文件关联。Ptmalloc 每次调用 mmap都设置该标志。     </p>
+<p> fd：有效的文件描述词。如果 MAP_ANONYMOUS 被设定，为了兼容问题，其值应为-1。<br> offset：被映射对象内容的起点。      </p>
+<h2 id="2"><a href="#2" class="headerlink" title="2."></a>2.</h2>
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#基础知识"><span class="toc-number">1.</span> <span class="toc-text">基础知识</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-x86下的Linux的内存分布"><span class="toc-number">1.1.</span> <span class="toc-text">1.x86下的Linux的内存分布</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Heap操作相关"><span class="toc-number">1.1.0.0.1.</span> <span class="toc-text">Heap操作相关</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Mmap-映射区域操作相关函数"><span class="toc-number">1.1.0.0.2.</span> <span class="toc-text">Mmap 映射区域操作相关函数</span></a></li></ol></li></ol></li></ol><li class="toc-item toc-level-2"><a class="toc-link" href="#2"><span class="toc-number">1.2.</span> <span class="toc-text">2.</span></a></li>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

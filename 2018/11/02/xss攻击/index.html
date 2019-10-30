@@ -1,0 +1,175 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>xss攻击 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="注：由于技术原因好多js代码自动执行所以统一将&amp;lt;&amp;gt;换为了《》避免代码执行。xss绕过姿势一、
+
+如果网站过滤了《script》，利用其他类型标签去执行xss，主要思想：&amp;lt;1、这个标,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">xss攻击</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">xss攻击</h1>
+        <div class="stuff">
+            <span>十一月 02, 2018</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="注：由于技术原因好多js代码自动执行所以统一将-lt-gt-换为了《》避免代码执行。"><a href="#注：由于技术原因好多js代码自动执行所以统一将-lt-gt-换为了《》避免代码执行。" class="headerlink" title="注：由于技术原因好多js代码自动执行所以统一将&lt;&gt;换为了《》避免代码执行。"></a>注：由于技术原因好多js代码自动执行所以统一将&lt;&gt;换为了《》避免代码执行。</h1><h5 id="xss绕过姿势"><a href="#xss绕过姿势" class="headerlink" title="xss绕过姿势"></a>xss绕过姿势</h5><p>一、</p>
+<ol>
+<li>如果网站过滤了《script》，利用其他类型标签去执行xss，主要思想：<br>&lt;1、这个标签可以写入连接导致跳转或者包含其他页面，例如《img》.       </li>
+</ol>
+<p>&lt;2、  这个标签中可以添加事件而执行javascript，例如《input》.   </p>
+<p>2.利用伪协议：<br>   《img src=”javascript:alert( ‘xss’ )” 》可以使用javascriptt的为协议去执行xss代码，当然也可以在img中导入一个外网带有xss代码链接。<br>注：但是也不是所有的web浏览器都支持伪协议。<br>二、<br>1.如果我们的输入在input标签中，或者能够自己写入一个input标签，就可以构建自己的事件例如：onclick，onmouseover，onkeydown等响应事件。<br>2.可利用的事件一般分为三类：<br>用户接口IO（鼠标，键盘）<br>逻辑（处理的结果）<br>变化（对文档的修改）<br>EG：<br>1.《input type=”button” value=”click me” onclick=”alert(/click me/)”》<br>当点击的时候出现弹框。<br>2.《img src=’#’ onerror=alert(/xss/)》<br>当图片出错时会出现弹框；<br>三、<br>1.编码绕过、常用编码：   </p>
+<h6 id="URL编码："><a href="#URL编码：" class="headerlink" title="URL编码："></a>URL编码：</h6><p>通过%和ascii码编码但是要确认服务器会对我们的输入解码，否则起反作用。   </p>
+<h6 id="HTML实体编码："><a href="#HTML实体编码：" class="headerlink" title="HTML实体编码："></a>HTML实体编码：</h6><p>《1. 命名实体：以&amp;开头，分号结尾的，例如“&lt;”编码为“&lt;”<br>《2.字符编码：十进制、十六进制ASCII码或unicode字符编码，样式为“&amp;#数值;” ,例如“&lt;”可以编码为“&#060;”和“&#x3c;”。     </p>
+<h5 id="JS编码："><a href="#JS编码：" class="headerlink" title="JS编码："></a>JS编码：</h5><p>《1.三个八进制数字，如果不够个数，前面补0，例如“e”编码为“\145”。<br>《2.两个十六进制数字，如果不够个数，前面补0，例如“e”编码为“\x65”。<br>《3.四个十六进制数字，如果不够个数，前面补0，例如“e”编码为“\u0065”。<br>《4.对于一些控制字符，使用特殊的c类型的转义风格（例如\n和\r）。   </p>
+<h5 id="CSS编码："><a href="#CSS编码：" class="headerlink" title="CSS编码："></a>CSS编码：</h5><p>《1. 用一个反斜线（\）后面跟1~6位的十六进制数字，例如e可以编码为“\65”或“65”或“00065”。<br>注：xss在什么位置应该被什么识别。如果现在代码在html里面运行展示给用户，那么我们的代码就应该被html所识别。如果代码现在在js的环境，那么就应该被js所识别。<br>四、<br>1.XSS构造：<br>这里利用一个《a》超链接标签构造xss产生弹窗。<br> 《pre》《a onclick=”javascript:alert(/xss/)”》click this url《/a》《/pre》<br>《pre》《a onclick=”javascript:alert(/xss/)”》click this url《/a》《/pre》<br>由于javascript被屏蔽所以达不到预期弹窗。这时将关键代码（即javascript后面部分进行实体编码），就可以弹窗了。<br>注：此时$name运行环境顺序：首先在html中展示，接着才会经过我们点击而触发onclick事件。所以经过html解码后的代码在javascript环境中运行已经是正常代码了。<br>2.也可以先JavaScript解码后将后续代码输入。<br>注：《1. 此时的运行环境刚好相反：首先变量没有在html中展示，而是进入了javascript环境中进行过滤。所以我们可以利用JavaScript的编码（Unicode）进行绕过过滤，解码后的数据已经正常而可以被html展示，再次出发JavaScript脚本也能够弹窗了。<br>《2. 如果&amp;等符号被过滤的话，可以经过url编码进行测试。如果服务器端进行了urldecode方法也可以绕过编码。<br>**总结来说就是，如果服务器利用了多重编码方式，我们可以利用运行环境和编码差异来绕过代码检测。</p>
+<p>五、<br>1.利用xss漏洞，一般攻击者可以进行两种攻击:钓鱼和盗取Cookie<br>攻击者根据原始的网页构造一个克隆页面<br>通过xss将克隆页面导入网站后台<br>用户信以为真而在克隆页面中输入用户信息，例如用户名密码<br>收集到用户的信息之后，我们将用户的用户名和密码导入到钓鱼接受平台中。<br>2.er盗取cookie利用原理和钓鱼相同，我们接收到用户的cookie后就能够伪造身份登陆后台了。   </p>
+<h4 id="史诗级总结："><a href="#史诗级总结：" class="headerlink" title="史诗级总结："></a>史诗级总结：</h4><p>1.xss和csrf区别：<br>xss：<br>攻击者发现xss漏洞-构造代码-发送给受害人-受害人打开-攻击者获取受害人的cookie-完成攻击。<br>csrf：<br>攻击者发现csrf漏洞-构造代码-发送给受害人-受害人打开-受害人执行代码-完成攻击。   </p>
+<p>&lt;1. xss容易被发现，因为攻击者需要登陆后台完成攻击。管理员可以看日志发现攻击者。而csrf则不同，他的攻击一直是管理员自己实现的，攻击者只负责了构造代码。csrf借助受害者的cookie骗取受害者的cookie骗取服务器的信任，但是并不能获取到cookie，也看不到cookie的内容。   </p>
+<p>&lt;2. 有的xss是获取信息，不需要提前知道其他用户页面的代码和数据包。 csrf是代替用户完成指定的动作，需要知道其他用户页面的代码和数据包。<br>xss分类：<br>1.反射xss原理：<br>Hacker—发现存在反射xss的url—根据输出点的环境构造xss代码—进行编码、缩短（可有可无，是为了增加迷惑性）—-发送给受害人—-受害打开后，执行xss代码—–完成hacker想要的功能（获取cookies、url、浏览器信息、ip等）<br>感想：有待实战后添加。<br>2.存储型xss<br>3.dom型xss<br>反射型xss和存储型xss的区别：<br>有无存储在数据库中。<br>xss模板：<br>一、<br>1.《HTML 标签》《/HTML 标签》【输出】《HTML 标签》《/HTML 标签》<br>   《HTML 标签》【输出】《/HTML 标签》<br>二、<br>2.《script》…[输出]….《/script》<br>《style》….[输出]…..《/script》<br>三、<br>输出在HTML属性里的情况。<br>怎么手工挖掘xss<br>手工的话，记住一句话“见框就插、改数据包不可见部分、改URL参数、js分析”  </p>
+<h4 id="xss攻击原理："><a href="#xss攻击原理：" class="headerlink" title="xss攻击原理："></a>xss攻击原理：</h4><p>浏览器在解析的时候，HTML解码-&gt;js解码，解析到《script》标签后，将之后的这段代码交给js解析器去解析，执行alert()语句实行弹框。<br>难度升级后：<br>$name = str_replace( ‘《script》’, ‘’, $_GET[ ‘name’ ] );<br>该代码用str_replace搜索替换掉《script》,若要绕过：<br>1.双写绕过：<br>input=《scr《script》ipt》alert(/xss/)《/scr《script》ipt》<br>由于只匹配一次，所以过滤后剩下《script》alert(/xss/)《/script》,可成功弹窗。<br>2.大小写混淆过：<br>input=《Script》alert(/xss/)《/Script》<br>可直接绕过过滤，直接弹窗。<br>3.编码绕过：<br>参考上面代码转换。<br>升级：<br>$name = preg_replace( ‘/&lt;(.<em>)s(.</em>)c(.<em>)r(.</em>)i(.<em>)p(.</em>)t/i’, ‘’, $_GET[ ‘name’ ] );<br>分析：preg_replace()可以无限次匹配，由尖括号开始的script标签，不区分大小写。<br>此时无法使用《script》标签注入xss代码，但是可以通过img、body等标签的事件或者iframe等标签的src注入恶意的js代码。<br>如《img src=1 onerror=alert(/xss/)》。<br>PHP htmlspecialchars() 函数<br>把预定义的字符 “&lt;” （小于）和 “&gt;” （大于）转换为 HTML 实体：防止浏览器将其作为HTML元素。简言之，用户输入的如何东西都不当标签。<br>注意：正则表达式替换。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#注：由于技术原因好多js代码自动执行所以统一将-lt-gt-换为了《》避免代码执行。"><span class="toc-number">1.</span> <span class="toc-text">注：由于技术原因好多js代码自动执行所以统一将&lt;&gt;换为了《》避免代码执行。</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#xss绕过姿势"><span class="toc-number">1.0.0.0.1.</span> <span class="toc-text">xss绕过姿势</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#URL编码："><span class="toc-number">1.0.0.0.1.1.</span> <span class="toc-text">URL编码：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#HTML实体编码："><span class="toc-number">1.0.0.0.1.2.</span> <span class="toc-text">HTML实体编码：</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#JS编码："><span class="toc-number">1.0.0.0.2.</span> <span class="toc-text">JS编码：</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#CSS编码："><span class="toc-number">1.0.0.0.3.</span> <span class="toc-text">CSS编码：</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#史诗级总结："><span class="toc-number">1.0.0.1.</span> <span class="toc-text">史诗级总结：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#xss攻击原理："><span class="toc-number">1.0.0.2.</span> <span class="toc-text">xss攻击原理：</span></a></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

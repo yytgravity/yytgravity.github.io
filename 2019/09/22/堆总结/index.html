@@ -1,0 +1,279 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>堆总结 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="linux 堆堆内存管理机制接着上篇linux内核学习这次主要介绍一下linux glibc使用的ptmalloc2实现原理。
+Arena介绍1.简介   
+
+我们都知道：当我们申请一定大小的数据，,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">堆总结</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">堆总结</h1>
+        <div class="stuff">
+            <span>九月 22, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="linux-堆"><a href="#linux-堆" class="headerlink" title="linux 堆"></a>linux 堆</h1><h3 id="堆内存管理机制"><a href="#堆内存管理机制" class="headerlink" title="堆内存管理机制"></a>堆内存管理机制</h3><p>接着上篇<br><a href="https://711lab.club/2019/09/17/linux%E5%86%85%E6%A0%B8%E5%AD%A6%E4%B9%A0%EF%BC%88%E4%B8%80%EF%BC%89/" target="_blank" rel="noopener">linux内核学习</a>这次主要介绍一下linux glibc使用的ptmalloc2实现原理。</p>
+<h5 id="Arena介绍"><a href="#Arena介绍" class="headerlink" title="Arena介绍"></a>Arena介绍</h5><p>1.简介   </p>
+<ul>
+<li>我们都知道：当我们申请一定大小的数据，系统会返回我们一个大于请求字节数的堆，这个堆空间就叫做Arean，若是主线程分配的，所以我们称其为main arean。<ul>
+<li>在主进程调用free之后：程序的堆空间并没有被释放掉，调用free函数释放已经分配了的空间并不是直接返还给系统，而是交给了glibc的malloc库函数加以管理。它将会把释放的chunk添加到main arena的bin（bin是一个用于存储同类型free chunk的双链表数据结构）记录空闲空间的freelist数据结构称之为bins。之后当用户再次调用malloc申请堆空间的时候，glibc malloc会先尝试从bins中找到一个满足要求的chunk，如果没有才会向操作系统申请新的堆空间。     </li>
+</ul>
+</li>
+</ul>
+<p>2.Arena的数量限制：<br>不管是否为主线程，每个用户进程都有自己独立的arena，但并不是无论多少个进程都会有自己的arena，arena的数量是有限制的：</p>
+<pre><code class="cpp">For 32 bit systems:
+    Number of arena = 2 * number of cores +1
+For 64 bit systems:
+    Number of arena = 2 * number of cores +1
+</code></pre>
+<p>3.多Arena的管理机制<br>假设：现有一台只有一个处理核心的PC机且安装有32位操作系统，现在上面运行一个多线程程序 – 共有四个线程（一主 + 三个用户线程）。很显然此时已经超过了Arena的最大数量限制，那么glibc malloc是如何分配这三个arena的？我们接下来探讨谈一下：      </p>
+<ul>
+<li>当主线程首次调用malloc时，glibc malloc会直接为其分配一个main arena；之后用户线程1 和 2 首次调用malloc时，glibc malloc会分别为其创建一个thread arena。在用户线程三调用之前，arena和线程数是一一对应的。<ul>
+<li>但用户线程三首次调用malloc时，因为已达上限，所以无法为其创建一个新的thread arena。那么此时就要考虑arena的重复利用了。    </li>
+</ul>
+</li>
+</ul>
+<p>重复利用：</p>
+<ul>
+<li>First：glibc malloc会遍历所有可用的arena，在遍历的过程中，是通过lock的方法来寻找可重复利用的arena（只有该arena对应的堆内存未被使用时才可被lock）。</li>
+<li>Second：如果未找到可以lock的arena，就会将暂时将线程3的malloc操作阻塞掉，知道出现可用的arena。<ul>
+<li>如果线程3再次调用malloc的话， glibc malloc就会先尝试使用最近访问的arena（假如此时为main arena）。此时main arena可用的话，就直接使用，否则就将线程3阻塞，直到main arena再次可用为止。这样就可达到线程3 与主线程共享main arena了。      </li>
+</ul>
+</li>
+</ul>
+<h4 id="堆管理"><a href="#堆管理" class="headerlink" title="堆管理"></a>堆管理</h4><p>1.要用到的数据结构：     </p>
+<ul>
+<li>1.heap_info：即Heap Header，因为一个thread arena（除main thread）可以包含多个heaps，为了方便管理，就给每个heap分配一个heap header。<ul>
+<li>在当前heap不够用的时候，malloc会通过系统调用mmap申请新的堆空间，新的堆空间会被添加到当前thread arena中，便于管理。      </li>
+</ul>
+</li>
+</ul>
+<pre><code class="cpp">typedef struct _heap_info
+{
+  mstate ar_ptr; /* Arena for this heap. */
+  struct _heap_info *prev; /* Previous heap. */
+  size_t size;   /* Current size in bytes. */
+  size_t mprotect_size; /* Size in bytes that has been mprotected
+                           PROT_READ|PROT_WRITE.  */
+  /* Make sure the following data is properly aligned, particularly
+     that sizeof (heap_info) + 2 * SIZE_SZ is a multiple of
+     MALLOC_ALIGNMENT. */
+  char pad[-6 * SIZE_SZ &amp; MALLOC_ALIGN_MASK];
+} heap_info;     
+</code></pre>
+<ul>
+<li>2.mlloc_state:即Arena Header，每个thread只含有一个Arena Header。Arena Header包含bins的信息、top chunk以及最后一个remainder chunk等:     </li>
+</ul>
+<pre><code class="cpp">struct malloc_state
+{
+  /* Serialize access.  */
+  mutex_t mutex;
+
+  /* Flags (formerly in max_fast).  */
+  int flags;
+
+  /* Fastbins */
+  mfastbinptr fastbinsY[NFASTBINS];
+
+  /* Base of the topmost chunk -- not otherwise kept in a bin */
+  mchunkptr top;
+
+  /* The remainder from the most recent split of a small request */
+  mchunkptr last_remainder;
+
+  /* Normal bins packed as described above */
+  mchunkptr bins[NBINS * 2 - 2];
+
+  /* Bitmap of bins */
+  unsigned int binmap[BINMAPSIZE];
+
+  /* Linked list */
+  struct malloc_state *next;
+
+  /* Linked list for free arenas.  */
+  struct malloc_state *next_free;
+
+  /* Memory allocated from the system in this arena.  */
+  INTERNAL_SIZE_T system_mem;
+  INTERNAL_SIZE_T max_system_mem;
+};
+</code></pre>
+<ul>
+<li>3.malloc_chunk：即Chunk Header，一个heap被分为多个chunk ，至于每个chunk的大小，这是根据用户的请求决定的，也就是说用户调用malloc(size)传递的size参数“就是”chunk的大小(这里给“就是”加上引号，说明这种表示并不准确，但是为了方便理解就暂时这么描述了，详细说明见后文)。每个chunk都由一个结构体malloc_chunk表示：   </li>
+</ul>
+<pre><code class="cpp">struct malloc_chunk {
+  /* #define INTERNAL_SIZE_T size_t */
+  INTERNAL_SIZE_T      prev_size;  /* Size of previous chunk (if free).  */
+  INTERNAL_SIZE_T      size;       /* Size in bytes, including overhead. */
+  struct malloc_chunk* fd;         /* double links -- used only if free. 这两个指针只在free chunk中存在*/
+  struct malloc_chunk* bk;
+
+  /* Only used for large blocks: pointer to next larger size.  */
+  struct malloc_chunk* fd_nextsize; /* double links -- used only if free. */
+  struct malloc_chunk* bk_nextsize;
+};
+</code></pre>
+<hr>
+<p><strong>注意：</strong><br><strong>1. Main thread不含有多个heaps所以也就不含有heap_info结构体。当需要更多堆空间的时候，就通过扩展sbrk的heap segment来获取更多的空间，直到它碰到内存mapping区域为止。</strong><br><strong>2. 不同于thread arena，main arena的arena header并不是sbrk heap segment的一部分，而是一个全局变量！因此它属于libc.so的data segment。</strong><br>首先，通过内存分布图理清malloc_state与heap_info之间的组织关系。<br>下图是只有一个heap segment的main arena和thread arena的内存分布图：<br><img src="https://i.loli.net/2019/09/23/eSq6xPE5mRvHaAh.png" alt="41u4skqanfb0.png"><br>下图是一个thread arena中含有多个heap segments的情况：<br><img src="https://i.loli.net/2019/09/22/rBVIwT1oKED7i5z.png" alt="41u4snuicn70.png">     </p>
+<p>从上图可以看出，thread arena只含有一个malloc_state(即arena header)，却有两个heap_info(即heap header)。由于两个heap segments是通过mmap分配的内存，两者在内存布局上并不相邻而是分属于不同的内存区间，所以为了便于管理，libc malloc将第二个heap_info结构体的prev成员指向了第一个heap_info结构体的起始位置（即ar_ptr成员），而第一个heap_info结构体的ar_ptr成员指向了malloc_state，这样就构成了一个单链表，方便后续管理。      </p>
+<h4 id="chunk"><a href="#chunk" class="headerlink" title="chunk"></a>chunk</h4><p>在glibc malloc中将整个堆内存空间分成了连续的、大小不一的chunk，chunk是堆内存管理的最小操作单位。chunk分为四类：    </p>
+<ul>
+<li>1.allocated chunk   </li>
+<li>2.free chunk </li>
+<li>3.top chunk    </li>
+<li>4.last remainder chunk       </li>
+</ul>
+<p>所有类型的chunk本质上都是内存中一块连续的区域，只是通过区域中特定位置的某些标识符加以区分。我们先将他们分为两类:1.已经分配给用户使用的chunk（allocated chunk） 2.未被使用的chunk（free chunk）。<br>想要了解堆内存管理器的演变历程可以移步我的另一篇文章：       </p>
+<p>1.top chunk<br>当一个chunk位于arena的最顶部（地址最高处）时，就称该chunk为top chunk。top chunk不属于任何bin，它在系统当前所有bin都无法满足用户请求的时候，才会被当作应急消防员一样的角色，分配给用户使用。<br>当top chunk的大小大于用户请求的话，就会被分为两个部分：     </p>
+<ul>
+<li>1.用户请求的chunk 。        </li>
+<li>2.剩余的作为新的top chunk。     </li>
+</ul>
+<p>如果小于请求大小，就需要拓展heap或分配新的heap（在main arena中通过sbrk扩展heap，而在thread arena中通过mmap分配新的heap。）<br>2.Last Remainder Chunk<br>1.产生：<br>当用户的请求是一个small bin，且该目标无法被small bin和unsorted bin满足的时候，就会通过binmaps遍历bin查找最合适的chunk，如果该chunk分配后还有剩余的话，就将该剩余部分变成一个新的chunk加入到unsorted bin中，之后<strong>再将该新chunk</strong>变成新的last remainder chunk。<br>2.作用：<br>Last Remainder Chunk主要用于提高连续malloc（small chunk）的效率，主要是提高内存分配的局部性。举个例子：当用户请求一个small chunk，且该请求无法被small bin满足，那么就转而交由unsorted bin处理。同时，假设当前unsorted bin中只有一个chunk的话——就是last remainder chunk，那么就将该chunk分成两部分：前者分配给用户，剩下的部分放到unsorted bin中，并成为新的last remainder chunk。这样就保证了连续malloc(small chunk)中，各个small chunk在内存分布中是相邻的，即提高了内存分配的局部性。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-堆"><span class="toc-number">1.</span> <span class="toc-text">linux 堆</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#堆内存管理机制"><span class="toc-number">1.0.1.</span> <span class="toc-text">堆内存管理机制</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Arena介绍"><span class="toc-number">1.0.1.0.1.</span> <span class="toc-text">Arena介绍</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#堆管理"><span class="toc-number">1.0.1.1.</span> <span class="toc-text">堆管理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#chunk"><span class="toc-number">1.0.1.2.</span> <span class="toc-text">chunk</span></a></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>c项目 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="纪念一下自己的第一个项目
+一、思路分析：首先需要了解TCP/IP、UDP、Socket编程：
+1.什么是TCP/IP、UDP？
+互联网协议（Internet Protocol Suite）是一个网络,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">c项目</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">c项目</h1>
+        <div class="stuff">
+            <span>十二月 22, 2018</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p><strong>纪念一下自己的第一个项目</strong></p>
+<h3 id="一、思路分析："><a href="#一、思路分析：" class="headerlink" title="一、思路分析："></a>一、思路分析：</h3><p>首先需要了解TCP/IP、UDP、Socket编程：</p>
+<h6 id="1-什么是TCP-IP、UDP？"><a href="#1-什么是TCP-IP、UDP？" class="headerlink" title="1.什么是TCP/IP、UDP？"></a>1.什么是TCP/IP、UDP？</h6><ol>
+<li>互联网协议（Internet Protocol Suite）是一个网络通信模型，以及一整个网络传输协议家族，为互联网的基础通信架构。它常被通称为TCP/IP协议族（英语：TCP/IP Protocol Suite，或TCP/IP Protocols），简称TCP/IP。因为该协议家族的两个核心协议：TCP（传输控制协议）和IP（网际协议），为该家族中最早通过的标准。      </li>
+<li><p>UDP（User Data Protocol，用户数据报协议）是与TCP相对应的协议。它是属于TCP/IP协议族中的一种。<br><img src="https://i.loli.net/2018/12/22/5c1e0a06bc6ea.jpg" alt="socket1.jpg"><br>那么Socket在哪呢？看下面这张图<br><img src="https://i.loli.net/2018/12/22/5c1e0a6d67b64.jpg" alt="socket2.jpg"></p>
+<h6 id="2-Socket是什么？"><a href="#2-Socket是什么？" class="headerlink" title="2.Socket是什么？"></a>2.Socket是什么？</h6><p>Socket是应用层与TCP/IP协议族通信的中间软件抽象层，它是一组接口。在设计模式中，Socket其实就是一个门面模式，它把复杂的TCP/IP协议族隐藏在Socket接口后面，对用户来说，一组简单的接口就是全部，让Socket去组织数据，以符合指定的协议。<br><img src="https://i.loli.net/2018/12/22/5c1e0adc58a97.jpg" alt="socket3.jpg">         </p>
+<p>先从服务器端说起。服务器端先初始化Socket，然后与端口绑定(bind)，对端口进行监听(listen)，调用accept阻塞，等待客户端连接。在这时如果有个客户端初始化一个Socket，然后连接服务器(connect)，如果连接成功，这时客户端与服务器端的连接就建立了。客户端发送数据请求，服务器端接收请求并处理请求，然后把回应数据发送给客户端，客户端读取数据，最后关闭连接，一次交互结束。  </p>
+<h5 id="3-Socket函数"><a href="#3-Socket函数" class="headerlink" title="3.Socket函数"></a>3.Socket函数</h5><p>下面来介绍一下编程中需要用到的函数：<br><strong>1.socket()函数</strong><br>int socket(int domain, int type, int protocol); </p>
+</li>
+<li><p>domain：即协议域，又称为协议族（family）。常用的协议族有，AF_INET、AF_INET6、AF_LOCAL（或称AF_UNIX，Unix域socket）、AF_ROUTE等等。协议族决定了socket的地址类型，在通信中必须采用对应的地址，如AF_INET决定了要用ipv4地址（32位的）与端口号（16位的）的组合、AF_UNIX决定了要用一个绝对路径名作为地址。     </p>
+</li>
+<li>type：指定socket类型。常用的socket类型有，SOCK_STREAM、SOCK_DGRAM、SOCK_RAW、SOCK_PACKET、SOCK_SEQPACKET等等。      </li>
+<li>protocol：故名思意，就是指定协议。常用的协议有，IPPROTO_TCP、IPPTOTO_UDP、IPPROTO_SCTP、IPPROTO_TIPC等，它们分别对应TCP传输协议、UDP传输协议、STCP传输协议、TIPC传输协议<br><strong>注意：并不是上面的type和protocol可以随意组合的，如SOCK_STREAM不可以跟IPPROTO_UDP组合。当protocol为0时，会自动选择type类型对应的默认协议。</strong><br>当我们调用socket创建一个socket时，返回的socket描述字它存在于协议族（address family，AF_XXX）空间中，但没有一个具体的地址。如果想要给它赋值一个地址，就必须调用bind()函数，否则就当调用connect()、listen()时系统会自动随机分配一个端口。  </li>
+</ol>
+<p><strong>2.bind()函数</strong>    </p>
+<p>int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);</p>
+<p><strong>参数分析:</strong><br>1.sockfd：即socket描述字，它是通过socket()函数创建了，唯一标识一个socket。bind()函数就是将给这个描述字绑定一个名字。<br>2.addr：一个const struct sockaddr *指针，指向要绑定给sockfd的协议地址。这个地址结构根据地址创建socket时的地址协议族的不同而不同，如ipv4对应的是：</p>
+<pre><code class="cpp">struct sockaddr_in {
+    sa_family_t    sin_family; 
+    in_port_t      sin_port;   
+    struct in_addr sin_addr;   
+};
+struct in_addr {
+    uint32_t       s_addr;     
+};
+</code></pre>
+<p>ipv6对应的是：</p>
+<pre><code class="cpp"> struct sockaddr_in6 { 
+    sa_family_t     sin6_family;    
+    in_port_t       sin6_port;      
+    uint32_t        sin6_flowinfo;  
+    struct in6_addr sin6_addr;      
+    uint32_t        sin6_scope_id;  
+};
+struct in6_addr { 
+    unsigned char   s6_addr[16];    
+};
+
+Unix域对应的是：     
+
+#define UNIX_PATH_MAX    108
+struct sockaddr_un { 
+    sa_family_t sun_family;                
+    char        sun_path[UNIX_PATH_MAX];   
+};   
+</code></pre>
+<p>3.addrlen：对应的是地址的长度。<br>通常服务器在启动的时候都会绑定一个众所周知的地址（如ip地址+端口号），用于提供服务，客户就可以通过它来接连服务器；而客户端就不用指定，有系统自动分配一个端口号和自身的ip地址组合。这就是为什么通常服务器端在listen之前会调用bind()，而客户端就不会调用，而是在connect()时由系统随机生成一个。     </p>
+<h6 id="3、listen-、connect-函数"><a href="#3、listen-、connect-函数" class="headerlink" title="3、listen()、connect()函数"></a>3、listen()、connect()函数</h6><p>如果作为一个服务器，在调用socket()、bind()之后就会调用listen()来监听这个socket，如果客户端这时调用connect()发出连接请求，服务器端就会接收到这个请求。</p>
+<pre><code class="cpp">
+int listen(int sockfd, int backlog);
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+</code></pre>
+<p>listen函数的第一个参数即为要监听的socket描述字，第二个参数为相应socket可以排队的最大连接个数。socket()函数创建的socket默认是一个主动类型的，listen函数将socket变为被动类型的，等待客户的连接请求。</p>
+<p>connect函数的第一个参数即为客户端的socket描述字，第二参数为服务器的socket地址，第三个参数为socket地址的长度。客户端通过调用connect函数来建立与TCP服务器的连接。   </p>
+<h6 id="4、accept-函数"><a href="#4、accept-函数" class="headerlink" title="4、accept()函数"></a>4、accept()函数</h6><p>TCP服务器端依次调用socket()、bind()、listen()之后，就会监听指定的socket地址了。TCP客户端依次调用socket()、connect()之后就想TCP服务器发送了一个连接请求。TCP服务器监听到这个请求之后，就会调用accept()函数取接收请求，这样连接就建立好了。之后就可以开始网络I/O操作了，即类同于普通文件的读写I/O操作。</p>
+<pre><code class="cpp">
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+</code></pre>
+<p>accept函数的第一个参数为服务器的socket描述字，第二个参数为指向struct sockaddr *的指针，用于返回客户端的协议地址，第三个参数为协议地址的长度。如果accpet成功，那么其返回值是由内核自动生成的一个全新的描述字，代表与返回客户的TCP连接。</p>
+<p>注意：accept的第一个参数为服务器的socket描述字，是服务器开始调用socket()函数生成的，称为监听socket描述字；而accept函数返回的是已连接的socket描述字。一个服务器通常通常仅仅只创建一个监听socket描述字，它在该服务器的生命周期内一直存在。内核为每个由服务器进程接受的客户连接创建了一个已连接socket描述字，当服务器完成了对某个客户的服务，相应的已连接socket描述字就被关闭。</p>
+<h6 id="5、read-、write-等函数"><a href="#5、read-、write-等函数" class="headerlink" title="5、read()、write()等函数"></a>5、read()、write()等函数</h6><p>万事具备只欠东风，至此服务器与客户已经建立好连接了。可以调用网络I/O进行读写操作了，即实现了网咯中不同进程之间的通信！网络I/O操作有下面几组：</p>
+<p>read()/write()<br>recv()/send()<br>readv()/writev()<br>recvmsg()/sendmsg()<br>recvfrom()/sendto()      </p>
+<h6 id="6、close-函数"><a href="#6、close-函数" class="headerlink" title="6、close()函数"></a>6、close()函数</h6><p>在服务器与客户端建立连接之后，会进行一些读写操作，完成了读写操作就要关闭相应的socket描述字，好比操作完打开的文件要调用fclose关闭打开的文件。</p>
+<pre><code class="cpp">#include    
+int close(int fd); 
+</code></pre>
+<p>close一个TCP socket的缺省行为时把该socket标记为以关闭，然后立即返回到调用进程。该描述字不能再由调用进程使用，也就是说不能再作为read或write的第一个参数。</p>
+<p>注意：close操作只是使相应socket描述字的引用计数-1，只有当引用计数为0的时候，才会触发TCP客户端向服务器发送终止连接请求。</p>
+<p>4、socket中TCP的三次握手建立连接详解<br>我们知道tcp建立连接要进行“三次握手”，即交换三个分组。大致流程如下：</p>
+<ol>
+<li>客户端向服务器发送一个SYN J</li>
+<li>服务器向客户端响应一个SYN K，并对SYN J进行确认ACK J+1</li>
+<li>客户端再想服务器发一个确认ACK K+1<br>这就完了三次握手，但是这个三次握手发生在socket的那几个函数中呢？请看下图：    </li>
+</ol>
+<p><img src="https://i.loli.net/2018/12/22/5c1e408db8a66.png" alt="1.png">     </p>
+<p>从图中可以看出，当客户端调用connect时，触发了连接请求，向服务器发送了SYN J包，这时connect进入阻塞状态；服务器监听到连接请求，即收到SYN J包，调用accept函数接收请求向客户端发送SYN K ，ACK J+1，这时accept进入阻塞状态；客户端收到服务器的SYN K ，ACK J+1之后，这时connect返回，并对SYN K进行确认；服务器收到ACK K+1时，accept返回，至此三次握手完毕，连接建立。</p>
+<p>总结：客户端的connect在三次握手的第二个次返回，而服务器端的accept在三次握手的第三次返回。<br>Socket中TCP的四次握手释放连接详解<br>上面介绍了socket中TCP的三次握手建立过程，及其涉及的socket函数。现在我们介绍socket中的四次握手释放连接的过程，请看下图：<br><img src="https://i.loli.net/2018/12/22/5c1e40fda0f15.png" alt="2.png">     </p>
+<p>某个应用进程首先调用close主动关闭连接，这时TCP发送一个FIN M；<br>另一端接收到FIN M之后，执行被动关闭，对这个FIN进行确认。它的接收也作为文件结束符传递给应用进程，因为FIN的接收意味着应用进程在相应的连接上再也接收不到额外数据；<br>一段时间之后，接收到文件结束符的应用进程调用close关闭它的socket。这导致它的TCP也发送一个FIN N；<br>接收到这个FIN的源发送端TCP对它进行确认。<br>这样每个方向上都有一个FIN和ACK。</p>
+<h3 id="二、建立嵌套字通讯UDP"><a href="#二、建立嵌套字通讯UDP" class="headerlink" title="二、建立嵌套字通讯UDP"></a>二、建立嵌套字通讯UDP</h3><ol>
+<li>所谓socket嵌套字，指的是在网络通讯以前建立的通讯接口。进行网络连接以前，需要向系统注册申请一个新的socket。然后用这个socket进行网络连接。通俗点就是：嵌套字=传输层协议+端口号+IP地址。</li>
+<li>只创建嵌套字无法进行正常的网络体系，要想和其他计算机通讯还必须借助其他函数将建立的嵌套字与IP地址和端口联系起来。</li>
+<li>所谓无连接的套接字通信，指的是使用UDP协议进行信息传输。使用这种协议进行通信时，两个计算机之前没有建立连接的过程。需要处理的内容只是把信息发送到另一个计算机。这个通信的方式比较简单。</li>
+</ol>
+<p><strong>但由于无连接的嵌套字通讯是基于UDP协议的，所以无法保障数据传输的可靠性。</strong>   </p>
+<ol start="4">
+<li>无连接的嵌套字通讯不需要建立起客户机与服务器之间的连接，因此在程序中没有建立连接的过程。进行通讯之前，需要建立网络嵌套字。服务器需要绑定一个端口，在这个端口上监听接收到的信息。客户机需要设置远程IP和端口，需要传递的信息需要发送到这个IP和端口上。<br><img src="https://i.loli.net/2018/12/23/5c1f3122413a8.jpg" alt="4.jpg">   </li>
+<li>信息发送函数sendto可以通过一个以建立的嵌套字，将一段信息发送到另一个程序的嵌套字中。   <pre><code class="cpp">int sendto ( int s ,  void * msg, int len, unsigned int flags,struct sockaddr * to , int tolen ) ;
+</code></pre>
+</li>
+</ol>
+<p>在参数列表表中，s是已经建立好的socket。在使用UDP协议时，不需要进行计算机的连接操作。msg是需要发送的字符串。len是发送的字符串的长度。参数flags一般设0。参数sockaddr是一个表示套接字的结构体。这个结构体的定义如下所示。<br>这个结构体的定义方法如下所示。</p>
+<pre><code class="cpp">struct socketaddr_in
+{
+  unsigned short int sin_family;
+  uint16_t sin_port;
+  struct in_addr sin_addr;
+  unsigned char sin_zero[8];
+};
+</code></pre>
+<p>这个结构体的成员与作用如下所示。<br>sin_family：与sockaddr结构体中的sa_family相同。<br>sin_port：套接字使用的端口号。<br>sin_addr：需要访问的IP地址。<br>sin_zero：未使用的字段，填充为0。<br>在这一结构体中，in_addr也是一个结构体，定义方法如下所示。作用是保存一个IP地址。 </p>
+<pre><code class="cpp">struct in_addr   
+{     
+  uint32_t s_addr;    
+};   
+</code></pre>
+<p>在程序中，需要设置这个结构体每一个成员的值。参数tolen是sockaddr结构体的长度，这一长度可用sizeof函数来取得。这个结构体会把socket用指定的socket传送给对方主机。结果传送成功，则返回传送字符的个数。传送失败则返回-1。</p>
+<ol start="6">
+<li>信息接收函数recvfrom可以从一个socket中接收其他主机发送来的信息。</li>
+</ol>
+<p>int recvfrom(int s,void *buf,int len,unsigned int flags,sockaddr *from,int<br>*fromlen);          </p>
+<p>在参数列表中,s是一个已经建立的网络嵌套字。buf是接收到的信息保存到的内存地址。len是可以保存信息的buf内存长度。flags一般设0。参数sockaddr是IP地址与端口等信息。fromlen是sockaddr的长度，这个值可以用sizeof函数来取得。<br>这个函数调用成功，则返回接收到的字符数。失败则返回-1。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、思路分析："><span class="toc-number">1.</span> <span class="toc-text">一、思路分析：</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-什么是TCP-IP、UDP？"><span class="toc-number">1.0.0.1.</span> <span class="toc-text">1.什么是TCP/IP、UDP？</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-Socket是什么？"><span class="toc-number">1.0.0.2.</span> <span class="toc-text">2.Socket是什么？</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#3-Socket函数"><span class="toc-number">1.0.1.</span> <span class="toc-text">3.Socket函数</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#3、listen-、connect-函数"><span class="toc-number">1.0.1.1.</span> <span class="toc-text">3、listen()、connect()函数</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#4、accept-函数"><span class="toc-number">1.0.1.2.</span> <span class="toc-text">4、accept()函数</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#5、read-、write-等函数"><span class="toc-number">1.0.1.3.</span> <span class="toc-text">5、read()、write()等函数</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#6、close-函数"><span class="toc-number">1.0.1.4.</span> <span class="toc-text">6、close()函数</span></a></li></ol></li></ol><li class="toc-item toc-level-3"><a class="toc-link" href="#二、建立嵌套字通讯UDP"><span class="toc-number">2.</span> <span class="toc-text">二、建立嵌套字通讯UDP</span></a></li>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

@@ -1,0 +1,386 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chunk Extend and Overlapping - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="介绍主要是通过extend来实现chunk overlapping的效果，他有两个条件：     
+
+1.程序中存在基于堆的漏洞
+2.漏洞可以控制chunk header中的数据       原理
+,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Chunk Extend and Overlapping</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">Chunk Extend and Overlapping</h1>
+        <div class="stuff">
+            <span>十月 01, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h4 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h4><p>主要是通过extend来实现chunk overlapping的效果，他有两个条件：     </p>
+<ul>
+<li>1.程序中存在基于堆的漏洞</li>
+<li>2.漏洞可以控制chunk header中的数据       <h4 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h4></li>
+</ul>
+<p>hunk extend技术能够产生的原因在于ptmalloc在对堆chunk进行操作时使用的各种宏。</p>
+<p>在ptmalloc中，获取 chunk 块大小的操作如下：       </p>
+<pre><code class="cpp">/* Get size, ignoring use bits */
+#define chunksize(p) (chunksize_nomask(p) &amp; ~(SIZE_BITS))
+
+/* Like chunksize, but do not mask SIZE_BITS.  */
+#define chunksize_nomask(p) ((p)-&gt;mchunk_size)
+</code></pre>
+<p>一种是直接获取 chunk 的大小，不忽略掩码部分，另外一种是忽略掩码部分。   </p>
+<p>在 ptmalloc 中，获取下一 chunk 块地址的操作如下:    </p>
+<pre><code class="cpp">/* Size of the chunk below P.  Only valid if prev_inuse (P).  */
+#define prev_size(p) ((p)-&gt;mchunk_prev_size)
+
+/* Ptr to previous physical malloc_chunk.  Only valid if prev_inuse (P).  */
+#define prev_chunk(p) ((mchunkptr)(((char *) (p)) - prev_size(p)))
+</code></pre>
+<p>即通过malloc_chunk-&gt;prev_size获取前一块大小，然后使用本 chunk 地址减去所得大小。     </p>
+<p>在 ptmalloc，判断当前 chunk 是否是use状态的操作如下：</p>
+<pre><code class="cpp">#define inuse(p)
+    ((((mchunkptr)(((char *) (p)) + chunksize(p)))-&gt;mchunk_size) &amp; PREV_INUSE)
+</code></pre>
+<p>即查看下一 chunk 的 prev_inuse 域，而下一块地址又如我们前面所述是根据当前 chunk 的 size 计算得出的。<br>通过上面几个宏可以看出，ptmalloc通过chunk header的数据判断chunk的使用情况和对chunk的前后块进行定位。简而言之，chunk extend就是通过控制size和pre_size域来实现跨越块操作从而导致overlapping的。           </p>
+<h2 id="1-对被使用的fastbin进行extend"><a href="#1-对被使用的fastbin进行extend" class="headerlink" title="1.对被使用的fastbin进行extend"></a>1.对被使用的fastbin进行extend</h2><p>简单来说就是通过修改第一个块的大小来控制第二个块的内容：     </p>
+<pre><code class="cpp">int main(void)
+{
+    void *ptr,*ptr1;
+
+    ptr=malloc(0x10);//分配第一个0x10的chunk
+    malloc(0x10);//分配第二个0x10的chunk
+
+    *(long long *)((long long)ptr-0x8)=0x41;// 修改第一个块的size域
+
+    free(ptr);
+    ptr1=malloc(0x30);// 实现 extend，控制了第二个块的内容
+    return 0;
+}
+</code></pre>
+<p>当两个malloc语句执行之后，堆的内存分布如下:      </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000021 &lt;=== chunk 1
+0x602010:   0x0000000000000000  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000000021 &lt;=== chunk 2
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000020fc1 &lt;=== top chunk
+</code></pre>
+<p>之后，我们把 chunk1 的 size 域更改为 0x41，0x41 是因为 chunk 的 size 域包含了用户控制的大小和 header 的大小。如上所示正好大小为0x40。在题目中这一步可以由堆溢出得到。         </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000041 &lt;=== 篡改大小
+0x602010:   0x0000000000000000  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000000021
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000020fc1 
+</code></pre>
+<p>在执行free之后，可以看到chunk2和chunk1合成了一个0x40大小的chunk，一起释放了。</p>
+<pre><code class="cpp">Fastbins[idx=0, size=0x10] 0x00
+Fastbins[idx=1, size=0x20] 0x00
+Fastbins[idx=2, size=0x30]  ←  Chunk(addr=0x602010, size=0x40, flags=PREV_INUSE) 
+Fastbins[idx=3, size=0x40] 0x00
+Fastbins[idx=4, size=0x50] 0x00
+Fastbins[idx=5, size=0x60] 0x00
+Fastbins[idx=6, size=0x70] 0x00
+</code></pre>
+<p>之后再malloc(0x30)就会得到chunk1+chunk2的块，也就可以直接控制chunk2的内容，这种状态也可以称为：overlapping chunk。 </p>
+<pre><code class="cpp">call   0x400450 &lt;malloc@plt&gt;
+mov    QWORD PTR [rbp-0x8], rax
+
+rax = 0x602010
+
+</code></pre>
+<h2 id="2-对inuse的smallbin进行extend"><a href="#2-对inuse的smallbin进行extend" class="headerlink" title="2.对inuse的smallbin进行extend"></a>2.对inuse的smallbin进行extend</h2><p>处于 fastbin 范围的 chunk 释放后会被置入 fastbin 链表中，而不处于这个范围的 chunk 被释放后会被置于unsorted bin链表中。 以下这个示例中，我们使用 0x80 这个大小来分配堆（作为对比，fastbin 默认的最大的 chunk 可使用范围是0x70）            </p>
+<pre><code class="cpp">int main()
+{
+    void *ptr,*ptr1;
+
+    ptr=malloc(0x80);//分配第一个 0x80 的chunk1
+    malloc(0x10); //分配第二个 0x10 的chunk2
+    malloc(0x10); //防止与top chunk合并
+
+    *(int *)((int)ptr-0x8)=0xb1;
+    free(ptr);
+    ptr1=malloc(0xa0);
+}
+</code></pre>
+<p>在这个例子中，因为分配的 size 不处于 fastbin 的范围，因此在释放时如果与 top chunk 相连会导致和top chunk合并。所以我们需要额外分配一个chunk，把释放的块与top chunk隔开。           </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x00000000000000b1 &lt;===chunk1 篡改size域
+0x602010:   0x0000000000000000  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000000
+0x602050:   0x0000000000000000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000000
+0x602090:   0x0000000000000000  0x0000000000000021 &lt;=== chunk2
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x0000000000000000  0x0000000000000021 &lt;=== 防止合并的chunk
+0x6020c0:   0x0000000000000000  0x0000000000000000
+0x6020d0:   0x0000000000000000  0x0000000000020f31 &lt;=== top chunk
+</code></pre>
+<p>释放后，chunk1 把 chunk2 的内容吞并掉并一起置入unsorted bin      </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x00000000000000b1 &lt;=== 被放入unsorted bin
+0x602010:   0x00007ffff7dd1b78  0x00007ffff7dd1b78
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000000
+0x602050:   0x0000000000000000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000000
+0x602090:   0x0000000000000000  0x0000000000000021
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x00000000000000b0  0x0000000000000020 &lt;=== 注意此处标记为空
+0x6020c0:   0x0000000000000000  0x0000000000000000
+0x6020d0:   0x0000000000000000  0x0000000000020f31 &lt;=== top chunk
+
+
+
+[+] unsorted_bins[0]: fw=0x602000, bk=0x602000
+ →   Chunk(addr=0x602010, size=0xb0, flags=PREV_INUSE)
+</code></pre>
+<p>再次进行分配的时候就会取回 chunk1 和 chunk2 的空间，此时我们就可以控制 chunk2 中的内容</p>
+<pre><code class="cpp">      0x4005b0 &lt;main+74&gt;        call   0x400450 &lt;malloc@plt&gt;
+ →   0x4005b5 &lt;main+79&gt;        mov    QWORD PTR [rbp-0x8], rax
+
+     rax : 0x0000000000602010
+</code></pre>
+<h2 id="3-对free的smallbin进行extend"><a href="#3-对free的smallbin进行extend" class="headerlink" title="3.对free的smallbin进行extend"></a>3.对free的smallbin进行extend</h2><p>示例3是在示例2的基础上进行的，这次我们先释放 chunk1，然后再修改处于 unsorted bin 中的 chunk1 的size域。     </p>
+<pre><code class="cpp">int main()
+{
+    void *ptr,*ptr1;
+
+    ptr=malloc(0x80);//分配第一个0x80的chunk1
+    malloc(0x10);//分配第二个0x10的chunk2
+
+    free(ptr);//首先进行释放，使得chunk1进入unsorted bin
+
+    *(int *)((int)ptr-0x8)=0xb1;
+    ptr1=malloc(0xa0);
+}
+</code></pre>
+<p>两次 malloc 之后的结果如下:</p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x0000000000000091 &lt;=== chunk 1
+0x602010:   0x0000000000000000  0x0000000000000000
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000000
+0x602050:   0x0000000000000000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000000
+0x602090:   0x0000000000000000  0x0000000000000021 &lt;=== chunk 2
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x0000000000000000  0x0000000000020f51
+</code></pre>
+<p>我们首先释放chunk1使它进入unsorted bin中       </p>
+<pre><code class="cpp">unsorted_bins[0]: fw=0x602000, bk=0x602000
+ →   Chunk(addr=0x602010, size=0x90, flags=PREV_INUSE)
+
+0x602000:   0x0000000000000000  0x0000000000000091 &lt;=== 进入unsorted bin
+0x602010:   0x00007ffff7dd1b78  0x00007ffff7dd1b78
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000000
+0x602050:   0x0000000000000000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000000
+0x602090:   0x0000000000000090  0x0000000000000020 &lt;=== chunk 2
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x0000000000000000  0x0000000000020f51 &lt;=== top chunk
+</code></pre>
+<p>然后篡改chunk1的size域      </p>
+<pre><code class="cpp">0x602000:   0x0000000000000000  0x00000000000000b1 &lt;=== size域被篡改
+0x602010:   0x00007ffff7dd1b78  0x00007ffff7dd1b78
+0x602020:   0x0000000000000000  0x0000000000000000
+0x602030:   0x0000000000000000  0x0000000000000000
+0x602040:   0x0000000000000000  0x0000000000000000
+0x602050:   0x0000000000000000  0x0000000000000000
+0x602060:   0x0000000000000000  0x0000000000000000
+0x602070:   0x0000000000000000  0x0000000000000000
+0x602080:   0x0000000000000000  0x0000000000000000
+0x602090:   0x0000000000000090  0x0000000000000020
+0x6020a0:   0x0000000000000000  0x0000000000000000
+0x6020b0:   0x0000000000000000  0x0000000000020f51
+</code></pre>
+<p>此时再进行 malloc 分配就可以得到 chunk1+chunk2 的堆块，从而控制了chunk2 的内容。    </p>
+<h2 id="4-通过extend后向overlapping"><a href="#4-通过extend后向overlapping" class="headerlink" title="4.通过extend后向overlapping"></a>4.通过extend后向overlapping</h2><p>这里展示通过extend进行后向overlapping，这也是在CTF中最常出现的情况，通过overlapping可以实现其它的一些利用。      </p>
+<pre><code class="cpp">int main()
+{
+    void *ptr,*ptr1;
+
+    ptr=malloc(0x10);//分配第1个 0x10 的chunk1
+    malloc(0x10); //分配第2个 0x10 的chunk2
+    malloc(0x10); //分配第3个 0x10 的chunk3
+    malloc(0x10); //分配第4个 0x10 的chunk4    
+    *(int *)((int)ptr-0x8)=0x61;
+    free(ptr);
+    ptr1=malloc(0x50);
+}
+</code></pre>
+<p>在malloc(0x50)对extend区域重新占位后，其中0x10的fastbin块依然可以正常的分配和释放，此时已经构成overlapping，通过对overlapping的进行操作可以实现fastbin attack。     </p>
+<h2 id="5-通过extend前向overlapping"><a href="#5-通过extend前向overlapping" class="headerlink" title="5.通过extend前向overlapping"></a>5.通过extend前向overlapping</h2><p>主要是通过修改pre_inuse和pre_size域实现合并前面的块        </p>
+<pre><code class="cpp">int main(void)
+{
+    void *ptr1,*ptr2,*ptr3,*ptr4;
+    ptr1=malloc(128);//smallbin1
+    ptr2=malloc(0x10);//fastbin1
+    ptr3=malloc(0x10);//fastbin2
+    ptr4=malloc(128);//smallbin2
+    malloc(0x10);//防止与top合并
+    free(ptr1);
+    *(int *)((long long)ptr4-0x8)=0x90;//修改pre_inuse域
+    *(int *)((long long)ptr4-0x10)=0xd0;//修改pre_size域
+    free(ptr4);//unlink进行前向extend
+    malloc(0x150);//占位块
+
+}
+</code></pre>
+<p>前向extend利用了smallbin的unlink机制，通过修改pre_size域可以跨越多个chunk进行合并实现overlapping。           </p>
+<h2 id="Chunk-Extend-Shrink的作用："><a href="#Chunk-Extend-Shrink的作用：" class="headerlink" title="Chunk Extend/Shrink的作用："></a>Chunk Extend/Shrink的作用：</h2><p>一般来说，这种技术并不能直接控制程序的执行流程，但是可以控制chunk中的内容。如果 chunk 存在字符串指针、函数指针等，就可以利用这些指针来进行信息泄漏和控制执行流程。            </p>
+<p>此外通过extend可以实现chunk overlapping，通过overlapping可以控制chunk的fd/bk指针从而可以实现 fastbin attack 等利用。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍"><span class="toc-number">1.</span> <span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#原理"><span class="toc-number">2.</span> <span class="toc-text">原理</span></a></li></ol><li class="toc-item toc-level-2"><a class="toc-link" href="#1-对被使用的fastbin进行extend"><span class="toc-number"></span> <span class="toc-text">1.对被使用的fastbin进行extend</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-对inuse的smallbin进行extend"><span class="toc-number"></span> <span class="toc-text">2.对inuse的smallbin进行extend</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-对free的smallbin进行extend"><span class="toc-number"></span> <span class="toc-text">3.对free的smallbin进行extend</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-通过extend后向overlapping"><span class="toc-number"></span> <span class="toc-text">4.通过extend后向overlapping</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-通过extend前向overlapping"><span class="toc-number"></span> <span class="toc-text">5.通过extend前向overlapping</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Chunk-Extend-Shrink的作用："><span class="toc-number"></span> <span class="toc-text">Chunk Extend/Shrink的作用：</span></a>
+        </li></div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

