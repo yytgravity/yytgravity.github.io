@@ -76,14 +76,30 @@ ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monito,">
 <li>wireshark：遇到不走HTTP的app，可以用它来定位代码。<br>逆向类：    </li>
 <li>IDA ：一般用于处理存在Native层的app。    </li>
 </ul>
-<h6 id="二、客户端静态安全"><a href="#二、客户端静态安全" class="headerlink" title="二、客户端静态安全"></a>二、客户端静态安全</h6><p>1.安装包签名：<br>风险描述<br>在 Android 中，包名相同的两个 APK 会被认为是同一个应用。当新版本覆盖旧版本时，签名证书必须一致，否则会被拒绝。（即使开启了“允许未知来源的应用”）。如果 APK没有使用自己的证书进行签名，将会失去对版本管理的主动权。   </p>
+<h4 id="二、客户端静态安全"><a href="#二、客户端静态安全" class="headerlink" title="二、客户端静态安全"></a>二、客户端静态安全</h4><h6 id="1-安装包签名："><a href="#1-安装包签名：" class="headerlink" title="1.安装包签名："></a>1.安装包签名：</h6><p>风险描述<br>在 Android 中，包名相同的两个 APK 会被认为是同一个应用。当新版本覆盖旧版本时，签名证书必须一致，否则会被拒绝。（即使开启了“允许未知来源的应用”）。如果 APK没有使用自己的证书进行签名，将会失去对版本管理的主动权。   </p>
 <p>风险等级 ：<br>中风险</p>
 <p>测试方法：<br>➢ 方法 1：使用 Android SDK 中的 apksigner.jar 检查安装包的签名：<br>java -jar .\apksigner.jar verify -v –print-certs APK 文件路径<br>➢ 方法 2：ApkBurster：<br>加载 APK 后，会自动输出安装包中 classes.dex 的签名。<br>风险分析：<br>只有在使用直接客户的证书签名时，才认为安全。Debug 证书、第三方（如开发方）证书等等均认为风险。缺少 V2 签名，或存在未受签名保护的文件时，均认为风险。常见的不合格情况包括：   </p>
 <ul>
 <li>未签名或签名无效：<br><img src="https://i.loli.net/2019/10/30/dThj8JiKxFPr1S6.jpg" alt="D49B5EEFF54747548EE3CEFCFD297936.jpg">    </li>
 <li>缺少V2签名：<br><img src="https://i.loli.net/2019/10/30/CNzljfpTPqRVAIb.jpg" alt="CF2A5BB9F7474B2E962020CAF76E86D0.jpg">  </li>
-<li>使用Debug证书签名：   </li>
+<li>使用Debug证书签名：<br><img src="https://i.loli.net/2019/10/31/Kk46YIOLU5aXj3y.jpg" alt="55E340A0FFAD48348DED85BAE82B63AB.jpg">    </li>
+<li>使用个人证书/开发方证书签名：<br><img src="https://i.loli.net/2019/10/31/edUNaItibTPJBuw.jpg" alt="6321CD9C3CBD468A836FB2F3D2504A32.jpg">    </li>
+<li>存在未受签名保护的文件：<br><img src="https://i.loli.net/2019/10/31/b8s3fzKWxFAPRVZ.jpg" alt="414D5B1BB1CF466197E07F70E0DE6D4E.jpg">   </li>
 </ul>
+<p><strong>2.修复方案</strong><br>建议客户端使用 APP 从属方证书进行签名后进行发布而不是使用第三方开发商的证书进行签名，以防开发商内部监管异常，证书滥用的情况出现。<br>此外，如果 APK 支持 Android7.0 及以上的系统，建议包含 V2 签名；如果 APK 不支持 Android6.0 及以下的系统，可以考虑不进行 V1 签名。   </p>
+<p><strong>注意事项：</strong>     </p>
+<ul>
+<li>1.大部分情况下，只要与用户说明相关危害即可，如果客户认为当前证书没有问题的话，可以接受风险。</li>
+<li>注意：旧式的验证方法是用 JDK 中的“jarsigner.exe -verify APK 文件路径 -verbose -certs”命令，但此种方式只能验证 V1 签名（而忽略 V2 签名状态）。V1签名方式已被认为不安全，详情请搜索“Janus”漏洞。<ul>
+<li>a) 但 Android 7.0 之前（不含 7.0，即 API Level&lt;24）的系统不支持 V2 签名方式，因此大多 APK 建议选择 V1 和 V2 方式共存的签名方法。  </li>
+</ul>
+</li>
+</ul>
+<h6 id="2-客户端数据安全："><a href="#2-客户端数据安全：" class="headerlink" title="2.客户端数据安全："></a>2.客户端数据安全：</h6><p><strong>风险描述：</strong><br>视具体的泄露信息而定，敏感信息泄露可能会方便恶意程序窃取凭据，或者泄露一些原本不希望被用户看到的内容。    </p>
+<p>风险等级：<br>中风险    </p>
+<p>测试方法：<br>Monitor.bat工具（ADT目录下\sdk\tools\下）     </p>
+<p>修复方案：<br>正常的文件权限最后三位应为空（rw-rw—-），目录则允许增加一个执行位（rwxrw-x）。   </p>
+<p><strong>注意事项</strong><br>1.app的数据文件目录一般为：/data/data/{APP包(package)名}/。<br>2.app通常需要登陆并使用一段时间后，才会产生足够多的数据文件。   </p>
 
             <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
             <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
@@ -110,8 +126,8 @@ ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monito,">
     </div>
     
         <div class="side">
-            <ol class="toc"><li class="toc-item toc-level-6"><a class="toc-link" href="#一、环境配置"><span class="toc-number">1.</span> <span class="toc-text">一、环境配置</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#二、客户端静态安全"><span class="toc-number">2.</span> <span class="toc-text">二、客户端静态安全</span></a></li></ol>
-        </div>
+            <ol class="toc"><li class="toc-item toc-level-6"><a class="toc-link" href="#一、环境配置"><span class="toc-number">1.</span> <span class="toc-text">一、环境配置</span></a></li></ol><li class="toc-item toc-level-4"><a class="toc-link" href="#二、客户端静态安全"><span class="toc-number"></span> <span class="toc-text">二、客户端静态安全</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-安装包签名："><span class="toc-number">1.</span> <span class="toc-text">1.安装包签名：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-客户端数据安全："><span class="toc-number">2.</span> <span class="toc-text">2.客户端数据安全：</span></a></li></ol>
+        </li></div>
     
 </div>
 
