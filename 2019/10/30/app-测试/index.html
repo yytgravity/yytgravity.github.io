@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>app 测试 - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="一、环境配置1.运行环境：   
+
+JDK ：java环境就不用说了，android都包含java外壳。
+ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monito,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">app 测试</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">app 测试</h1>
+        <div class="stuff">
+            <span>十月 30, 2019</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h6 id="一、环境配置"><a href="#一、环境配置" class="headerlink" title="一、环境配置"></a>一、环境配置</h6><p>1.运行环境：   </p>
+<ul>
+<li>JDK ：java环境就不用说了，android都包含java外壳。</li>
+<li>ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monitor，还包含了 Emulator 虚拟机和Eclipse 开发环境；   </li>
+<li>NDK ：NDK 可以在 Windows 上编译 Android(arm)使用的 Native 层可执行文件（C/C++），各项 Native 层测试工具都可用 NDK 制作；   </li>
+<li>GDB ：调试必备。   </li>
+</ul>
+<p>2.功能工具：<br>web类：</p>
+<ul>
+<li>BurpSuite/Fidder：主要用于HTTP的测试操作  </li>
+<li>wireshark：遇到不走HTTP的app，可以用它来定位代码。<br>逆向类：    </li>
+<li>IDA ：一般用于处理存在Native层的app。    </li>
+</ul>
+<h6 id="二、客户端静态安全"><a href="#二、客户端静态安全" class="headerlink" title="二、客户端静态安全"></a>二、客户端静态安全</h6><p>1.安装包签名：<br>风险描述<br>在 Android 中，包名相同的两个 APK 会被认为是同一个应用。当新版本覆盖旧版本时，签名证书必须一致，否则会被拒绝。（即使开启了“允许未知来源的应用”）。如果 APK没有使用自己的证书进行签名，将会失去对版本管理的主动权。   </p>
+<p>风险等级 ：<br>中风险</p>
+<p>测试方法：<br>➢ 方法 1：使用 Android SDK 中的 apksigner.jar 检查安装包的签名：<br>java -jar .\apksigner.jar verify -v –print-certs APK 文件路径<br>➢ 方法 2：ApkBurster：<br>加载 APK 后，会自动输出安装包中 classes.dex 的签名。<br>风险分析：<br>只有在使用直接客户的证书签名时，才认为安全。Debug 证书、第三方（如开发方）证书等等均认为风险。缺少 V2 签名，或存在未受签名保护的文件时，均认为风险。常见的不合格情况包括：   </p>
+<ul>
+<li>未签名或签名无效：<br><img src="https://i.loli.net/2019/10/30/dThj8JiKxFPr1S6.jpg" alt="D49B5EEFF54747548EE3CEFCFD297936.jpg">    </li>
+<li>缺少V2签名：<br><img src="https://i.loli.net/2019/10/30/CNzljfpTPqRVAIb.jpg" alt="CF2A5BB9F7474B2E962020CAF76E86D0.jpg">  </li>
+<li>使用Debug证书签名：   </li>
+</ul>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title="0" data-url="http://link.hhtjim.com/163/5146554.mp3"></li>
+                        
+                    
+                        
+                            <li title="1" data-url="http://link.hhtjim.com/qq/001faIUs4M2zna.mp3"></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-6"><a class="toc-link" href="#一、环境配置"><span class="toc-number">1.</span> <span class="toc-text">一、环境配置</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#二、客户端静态安全"><span class="toc-number">2.</span> <span class="toc-text">二、客户端静态安全</span></a></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
