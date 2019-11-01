@@ -76,6 +76,33 @@ ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monito,">
 <li>wireshark：遇到不走HTTP的app，可以用它来定位代码。<br>逆向类：    </li>
 <li>IDA ：一般用于处理存在Native层的app。    </li>
 </ul>
+<h6 id="简单的工具介绍："><a href="#简单的工具介绍：" class="headerlink" title="简单的工具介绍："></a>简单的工具介绍：</h6><p>1.创建和使用Emulator虚拟机：<br> Tools-&gt;Manage AVDs-&gt;Create：     </p>
+<p> 上图红框中部分为建议参数，其余部分可以根据需要进行修改。<br> 之后选中刚刚选中的设备，点击Start-&gt;Launch，即可启动虚拟机。   </p>
+<pre><code>Emulator虚拟机启动后会自动连接ADB，无需开启USB调试。   
+Emulator虚拟机的ADB默认具有root权限，这样可以轻易的完成root。   
+
+替换su：  
+adb shell mount -o remount,rw -t yaffs2 /dev/block/mtdblock3 /system    
+adb shell cat /system/bin/sh &gt; /system/bin/su    
+adb shell chmod 4755 /system/bin/su   
+
+</code></pre><p>2.ADB常用指令：<br>设备操作类：     </p>
+<ul>
+<li>查看设备列表：<br>adb devices   </li>
+<li>执行其他命令时选择目标设备：<br>adb -s 设备名称 其他命令<br>如果你同时连接了多个设备，要选择操作的目标设备，否则会出错。    </li>
+</ul>
+<p>文件/app操作类：   </p>
+<ul>
+<li>从安卓设中读出文件：<br>adb pull 安卓设备路径 主机路径    </li>
+<li>向安卓设备中写入文件：<br>adb push 主机路径 安卓设备路径    </li>
+<li>直接安装apk到安卓设备中:<br>adb install APK文件在主机中的路径   </li>
+<li>卸载安卓设备中的app<br>adb uninstall APP包名    </li>
+</ul>
+<p>系统命令类：     </p>
+<ul>
+<li>打开安卓设备的交互式shell<br>adb shell    </li>
+<li>在安卓设备中执行命令：<br>adb shell 要执行的命令。</li>
+</ul>
 <h4 id="二、客户端静态安全"><a href="#二、客户端静态安全" class="headerlink" title="二、客户端静态安全"></a>二、客户端静态安全</h4><h6 id="1-安装包签名："><a href="#1-安装包签名：" class="headerlink" title="1.安装包签名："></a>1.安装包签名：</h6><p>风险描述<br>在 Android 中，包名相同的两个 APK 会被认为是同一个应用。当新版本覆盖旧版本时，签名证书必须一致，否则会被拒绝。（即使开启了“允许未知来源的应用”）。如果 APK没有使用自己的证书进行签名，将会失去对版本管理的主动权。   </p>
 <p>风险等级 ：<br>中风险</p>
 <p>测试方法：<br>➢ 方法 1：使用 Android SDK 中的 apksigner.jar 检查安装包的签名：<br>java -jar .\apksigner.jar verify -v –print-certs APK 文件路径<br>➢ 方法 2：ApkBurster：<br>加载 APK 后，会自动输出安装包中 classes.dex 的签名。<br>风险分析：<br>只有在使用直接客户的证书签名时，才认为安全。Debug 证书、第三方（如开发方）证书等等均认为风险。缺少 V2 签名，或存在未受签名保护的文件时，均认为风险。常见的不合格情况包括：   </p>
@@ -99,7 +126,14 @@ ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monito,">
 <p>风险等级：<br>中风险    </p>
 <p>测试方法：<br>Monitor.bat工具（ADT目录下\sdk\tools\下）     </p>
 <p>修复方案：<br>正常的文件权限最后三位应为空（rw-rw—-），目录则允许增加一个执行位（rwxrw-x）。   </p>
-<p><strong>注意事项</strong><br>1.app的数据文件目录一般为：/data/data/{APP包(package)名}/。<br>2.app通常需要登陆并使用一段时间后，才会产生足够多的数据文件。   </p>
+<p><strong>注意事项</strong><br>1.app的数据文件目录一般为：/data/data/{APP包(package)名}/。<br>2.app通常需要登陆并使用一段时间后，才会产生足够多的数据文件。       </p>
+<h6 id="3-本地文件内容安全"><a href="#3-本地文件内容安全" class="headerlink" title="3.本地文件内容安全"></a>3.本地文件内容安全</h6><p><strong>风险描述：</strong><br>检查app数据目录中的文件是否包含敏感内容。包括文本文件、二进制文件、sharedPreference等XML文件、WebView等数据库文件等等。<br>也需要视具体情况而定，敏感信息泄露可能会方便恶意软件程序窃取凭证，或者泄露一些原本不希望被用户看到的内容。    </p>
+<p>风险等级：<br>视具体的泄露信息而定。<br>高风险：有认证凭据、交易信息、SessionID、通信密钥等高敏感的信息。<br>中风险：其他非高风险的敏感信息泄露。      </p>
+<p>测试方法：<br>依然是使用上面的Monitor.bat工具（ADT目录下\sdk\tools\下）<br>将安卓设备中的文件复制到有鼠标的主机上，方便查看。   </p>
+<p>修复方案：<br>尽量避免在文件、数据库等位置写入敏感信息，如果需要存储，应当进行加密。<br><strong>注意：</strong><br>遇到.bd文件大多数为SQLite数据库，使用Navicat等工具方可打开。    </p>
+<h6 id="本地日志内容安全"><a href="#本地日志内容安全" class="headerlink" title="本地日志内容安全:"></a>本地日志内容安全:</h6><p><strong>风险描述：</strong><br>基本同上   </p>
+<p>风险等级：<br>同上    </p>
+<p>测试方法：<br>logcat 命令可以查看系统日志，需要在安卓设备上执行（即在 adb shell 中执行）。   </p>
 
             <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
             <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
@@ -126,7 +160,7 @@ ADT ：ADT 中除了 adb（Android Debug Bridge）和 Monito,">
     </div>
     
         <div class="side">
-            <ol class="toc"><li class="toc-item toc-level-6"><a class="toc-link" href="#一、环境配置"><span class="toc-number">1.</span> <span class="toc-text">一、环境配置</span></a></li></ol><li class="toc-item toc-level-4"><a class="toc-link" href="#二、客户端静态安全"><span class="toc-number"></span> <span class="toc-text">二、客户端静态安全</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-安装包签名："><span class="toc-number">1.</span> <span class="toc-text">1.安装包签名：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-客户端数据安全："><span class="toc-number">2.</span> <span class="toc-text">2.客户端数据安全：</span></a></li></ol>
+            <ol class="toc"><li class="toc-item toc-level-6"><a class="toc-link" href="#一、环境配置"><span class="toc-number">1.</span> <span class="toc-text">一、环境配置</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#简单的工具介绍："><span class="toc-number">2.</span> <span class="toc-text">简单的工具介绍：</span></a></li></ol><li class="toc-item toc-level-4"><a class="toc-link" href="#二、客户端静态安全"><span class="toc-number"></span> <span class="toc-text">二、客户端静态安全</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-安装包签名："><span class="toc-number">1.</span> <span class="toc-text">1.安装包签名：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-客户端数据安全："><span class="toc-number">2.</span> <span class="toc-text">2.客户端数据安全：</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#3-本地文件内容安全"><span class="toc-number">3.</span> <span class="toc-text">3.本地文件内容安全</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#本地日志内容安全"><span class="toc-number">4.</span> <span class="toc-text">本地日志内容安全:</span></a></li></ol>
         </li></div>
     
 </div>
