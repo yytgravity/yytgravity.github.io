@@ -133,7 +133,21 @@ adb shell chmod 4755 /system/bin/su
 <p>修复方案：<br>尽量避免在文件、数据库等位置写入敏感信息，如果需要存储，应当进行加密。<br><strong>注意：</strong><br>遇到.bd文件大多数为SQLite数据库，使用Navicat等工具方可打开。    </p>
 <h6 id="本地日志内容安全"><a href="#本地日志内容安全" class="headerlink" title="本地日志内容安全:"></a>本地日志内容安全:</h6><p><strong>风险描述：</strong><br>基本同上   </p>
 <p>风险等级：<br>同上    </p>
-<p>测试方法：<br>logcat 命令可以查看系统日志，需要在安卓设备上执行（即在 adb shell 中执行）。   </p>
+<p>测试方法：<br>logcat 命令可以查看系统日志，需要在安卓设备上执行（即在 adb shell 中执行）。<br><img src="https://i.loli.net/2019/11/01/XWM1RTAIrFNnHf4.jpg" alt="3B93CDFA8E6C410ABA2093E09A388F1C.jpg">     </p>
+<p>修复方案：<br>开发过程中应尽量避免在日志中输出敏感信息，上线前应及时去除不必要的日志输出。     </p>
+<p>输入记录包括两部分，分别是键盘码记录和触摸屏记录，可根据情况进行选择。<br>➢  方法 1：手工测试</p>
+<ol>
+<li>将 KeyLogger 或 TouchLogger 复制到安卓设备中：<br>a)  使用 ADB：adb push 主机路径 安卓设备路径；<br>b)  使用Monitor：File Explorer -&gt; 直接将待写入的文件拖进去，或者右上角的 ；    </li>
+<li>设置执行权限：adb shell chmod 777 安卓设备中的文件路径；   </li>
+<li>运行测试程序：adb shell 安卓设备中的文件路径；   </li>
+<li>尝试输入敏感信息，观察测试程序的输出；<br>➢  方法 2：ApkBurster<br>无需加载 APK，使用“键盘记录”或“触屏记录”即可。    </li>
+</ol>
+<p>修复方案<br>尽量使用系统自定义的随机软键盘（而非系统输入法）来输入敏感信息。或者对 Nativ<br>e 层输入记录功能进行 Hook（需要 root 权限）。<br>注意事项</p>
+<ol>
+<li>除了常规密码外，像短信验证码、九宫格手势密码等亦属此类；</li>
+<li>对于多数 Android 系统，chmod a+x 可能会出错；</li>
+<li>大部分 Native 工具都是 arm 编译的，在 x86 设备（如 Genymotion）中可能无法<br>正常使用。</li>
+</ol>
 
             <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
             <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
