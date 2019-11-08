@@ -254,7 +254,11 @@ constraints:
 
 &#39;&#39;&#39;
 </code></pre>
-<h3 id="pwn2-login"><a href="#pwn2-login" class="headerlink" title="pwn2  login"></a>pwn2  login</h3><p>日常检查：<br><img src="https://i.loli.net/2019/11/08/M6eXfKFcxlZSTnr.jpg" alt="AFC7BB2CC58549078C0EE477EC169B65.jpg">  </p>
+<h3 id="pwn2-login"><a href="#pwn2-login" class="headerlink" title="pwn2  login"></a>pwn2  login</h3><p>日常检查：<br><img src="https://i.loli.net/2019/11/08/M6eXfKFcxlZSTnr.jpg" alt="AFC7BB2CC58549078C0EE477EC169B65.jpg"><br>题目delete功能，free之后没有清除指针，所以存在uaf漏洞，这道题的关键在于巧用strcmp函数来逐字节爆破地址。    </p>
+<pre><code class="cpp">for i in range(5):    
+      edit(4,chr(0x95-i))
+</code></pre>
+<p>将4的user结构分配到0的chunk位置，而0的user结构被分配给了4的chunk，这样就导致edit（4）会修改0的user结构中指向password的指针。<br>将0的user结构中的password指针指向要爆破地址的最高位，之后逐步后移。实现逐字节爆破</p>
 <pre><code class="cpp">from pwn import*
 import sys 
 context.log_level=&quot;debug&quot;
