@@ -330,6 +330,7 @@ def exp():
 exp()
 con.interactive()
 </code></pre>
+<h3 id="silent-note"><a href="#silent-note" class="headerlink" title="silent_note"></a>silent_note</h3><p>日常检查：<br><img src="https://i.loli.net/2019/11/11/VmP7tHqwxSis9ZJ.jpg" alt="7DFBC614C10E466BA089F5D38C6935BA.jpg"><br>这里只开启了partial relro，所以我们可以需修改got表。<br>首先先简单看一下add功能：<br><img src="https://i.loli.net/2019/11/11/NOdbI2mKRjHxtFQ.jpg" alt="517C918B606049B9905DB8781B7ADFDB.jpg"><br>这里我们只有两个大小的chunk可以选择，一个0x38的fast bin和一个大小0x218的unsorted bin，并且都是calloc的形式申请的：<br>接下来再来看看free功能：<br><img src="https://i.loli.net/2019/11/11/cPeXJ2lxZ7nFBAg.jpg" alt="4D4FE4D749B645A18D719FC1AF8AE987.jpg"><br>首先它没有对free后的指针做处理，所以存在uaf以及double free，但是由于我们只有一个fastbin的指针，所以无法直接</p>
 
             <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
             <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
